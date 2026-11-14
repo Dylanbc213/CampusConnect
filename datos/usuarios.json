@@ -10,5 +10,17 @@
         "nombre_usuario": "jose2",
         "contrasena": "jose2",
         "fecha_registro": "2026-11-08T16:32:43"
+    },
+    {
+        "nombre": "Dylan Ballestero",
+        "nombre_usuario": "Dylanbc",
+        "contrasena": "pbkdf2_sha256$600000$b8724df6096b1bac32d17feabbc51578$b52d4d114fe1305664427e799a1d6c89bd9e0835e4ab48324455b6835967faec",
+        "fecha_registro": "2026-11-10T15:52:54"
+    },
+    {
+        "nombre": "Gabriel Ballestero",
+        "nombre_usuario": "Gabriel222",
+        "contrasena": "pbkdf2_sha256$600000$5e035324d546f01c81977c64d913fe9d$db3059c15b9d4a34ee5fe8713cc114d000b08a71f505ff016565ffb5e6f2dd29",
+        "fecha_registro": "2026-11-10T16:25:07"
     }
 ]
