@@ -10,6 +10,7 @@ from gui.panel_principal import PanelPrincipal
 from gui.ventana_inicio import VentanaInicio
 from gui.ventana_login import VentanaLogin
 from gui.ventana_registro import VentanaRegistro
+from gui.estilo import preparar
 
 
 class CampusConnectApp:
@@ -19,7 +20,7 @@ class CampusConnectApp:
         """Inicializa la persistencia, carga los datos y presenta la pantalla inicial."""
         self.raiz = raiz
         self.raiz.title("CampusConnect")
-        self.raiz.geometry("420x420")
+        preparar(self.raiz)
         self.gestor_usuarios = GestorUsuarios(os.path.join(carpeta_datos, "usuarios.json"))
         self.gestor_amistades = GestorAmistades(
             os.path.join(carpeta_datos, "amistades.json"),
@@ -31,6 +32,7 @@ class CampusConnectApp:
         self.contenedor = tk.Frame(raiz, padx=20, pady=20)
         self.contenedor.pack(fill="both", expand=True)
         self.vista_actual = None
+        self.usuario_actual = None
         self.mostrar_vista("inicio")
 
     def mostrar_vista(self, nombre_vista, usuario=None):
@@ -52,6 +54,7 @@ class CampusConnectApp:
         for widget in self.contenedor.winfo_children():
             widget.destroy()
         self.vista_actual = nombre_vista
+        self.usuario_actual = usuario if nombre_vista == "panel" else None
         if nombre_vista == "panel":
             clase_vista(self.contenedor, self, usuario)
         else:

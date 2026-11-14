@@ -13,6 +13,17 @@ from pruebas_fase1 import WidgetSimulado
 
 
 class TextoSimulado(WidgetSimulado):
+    def insert(self, indice, texto, etiquetas=()):
+        self.valor += texto
+
+    def tag_configure(self, etiqueta, **opciones):
+        self.opciones[etiqueta] = opciones
+
+    def edit_modified(self, valor=None):
+        if valor is not None:
+            self.modificado = valor
+        return getattr(self, "modificado", False)
+
     def get(self, *indices):
         return self.valor
 
@@ -63,6 +74,16 @@ class PruebasPublicaciones(unittest.TestCase):
         amistades = GestorAmistades(self.amistades.ruta_archivo, self.usuarios)
         self.assertEqual([p.contenido for p in recargado.obtener_publicaciones_amigos("ana", amistades)], ["De Luis"])
 
+    def test_limite_de_caracteres_y_persistencia(self):
+        publicacion = self.gestor.crear_publicacion("ana", "á" * 500)
+        for contenido in ("x" * 501, " " + "x" * 500):
+            with self.assertRaises(ValueError):
+                self.gestor.crear_publicacion("ana", contenido)
+        self.assertEqual(self.gestor.publicaciones, [publicacion])
+        recargado = GestorPublicaciones(self.ruta)
+        self.assertEqual(recargado.publicaciones[0].contenido, "á" * 500)
+        self.assertEqual(len(recargado.publicaciones), 1)
+
     def test_fallo_guardado_conserva_datos(self):
         original = self.gestor.crear_publicacion("ana", "Anterior")
         with open(self.ruta, "rb") as archivo:
@@ -85,6 +106,14 @@ class PruebasPublicaciones(unittest.TestCase):
              patch("gui.ventana_muro.messagebox.showinfo") as exito:
             muro = VentanaMuro(None, app, self.usuarios.usuarios_por_nombre["ana"])
             self.assertIn("No hay publicaciones", muro.muro_personal.valor)
+            self.assertIn("de tus amigos", muro.muro_amigos.valor)
+            self.assertEqual(muro.boton_publicar.opciones["state"], "disabled")
+            for texto, estado in ((" \n ", "disabled"), ("x" * 500, "normal"), ("x" * 501, "disabled"), ("", "disabled")):
+                muro.campo_contenido.valor = texto
+                muro.campo_contenido.edit_modified(True)
+                muro.campo_contenido.opciones["<<Modified>>"](None)
+                self.assertEqual(muro.boton_publicar.opciones["state"], estado)
+                self.assertEqual(muro.contador.opciones["text"], "{} / 500 caracteres".format(len(texto)))
             muro._publicar()
             error.assert_called_once()
             exito.assert_not_called()
@@ -94,7 +123,11 @@ class PruebasPublicaciones(unittest.TestCase):
             self.assertEqual(muro.campo_contenido.valor, "Texto\ncon dos líneas")
             self.assertEqual(self.gestor.publicaciones, [])
             muro._publicar()
-            exito.assert_called_once()
+            exito.assert_not_called()
+            self.assertEqual(muro.confirmacion.opciones["text"], "Publicación creada correctamente.")
+            self.assertEqual(muro.boton_publicar.opciones["state"], "disabled")
+            self.assertEqual(muro.contador.opciones["text"], "0 / 500 caracteres")
+            self.assertEqual(self.gestor.publicaciones[0].nombre_usuario, "ana")
             self.assertEqual(muro.campo_contenido.valor, "")
             self.assertIn("Ana (@ana)", muro.muro_personal.valor)
             self.assertIn(self.gestor.publicaciones[0].fecha, muro.muro_personal.valor)
