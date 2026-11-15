@@ -14,7 +14,7 @@ from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import cargar_vista_previa, validar_imagen
 from gui.iconos import crear_icono
 from gui.fechas import fecha_publicacion
-from gui.videos import abrir_video
+from gui.reproductor_video import ReproductorVideo
 
 
 class ListaPublicaciones(tk.Frame):
@@ -155,12 +155,8 @@ class TarjetaPublicacion(tk.Frame):
             carpeta_datos = os.path.dirname(aplicacion.gestor_usuarios.ruta_archivo)
             ruta_video = (publicacion.ruta_video if os.path.isabs(publicacion.ruta_video)
                           else os.path.join(carpeta_datos, publicacion.ruta_video))
-            self.video_frame = tk.Frame(self, background="#111318", padx=18, pady=24)
+            self.video_frame = ReproductorVideo(self, ruta_video)
             self.video_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(0, 12))
-            tk.Button(self.video_frame, text="▶  Reproducir video corto",
-                      command=lambda r=ruta_video: abrir_video(r), background=ROJO,
-                      foreground=BLANCO, relief="flat", padx=18, pady=12,
-                      cursor="hand2", font=("Segoe UI", 11, "bold")).pack(anchor="center")
         acciones = tk.Frame(self, background=BLANCO)
         acciones.grid(row=4, column=1, columnspan=2, sticky="e", pady=(6, 0))
         self.boton_comentarios = tk.Button(

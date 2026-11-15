@@ -116,7 +116,8 @@ class Mensajes(tk.Frame):
         self.marco_entrada, self.entrada = crear_campo_redondeado(
             pie, tk.Text, width=1, height=3, wrap="word", font=("Segoe UI", 11),
             state="disabled", relief="flat", padx=12, pady=8,
-            background="#171A20", foreground="#F9FAFB", insertbackground="#F9FAFB")
+            background="#171A20", foreground="#000000", insertbackground="#000000")
+        self.entrada._campus_rol = "texto_mensaje"
         self.marco_entrada.pack(fill="x")
         self.entrada.bind("<Return>", self.enviar)
         self.entrada.bind("<Shift-Return>", self._salto)
