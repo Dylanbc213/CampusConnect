@@ -143,6 +143,8 @@ def aplicar_tema(widget, modo):
             fondo = paleta["SUPERFICIE"]
         elif fondo_base == "#fafafa":
             fondo = paleta["CAMPO"]
+        elif fondo_base == "#0b141a":
+            fondo = paleta["FONDO"] if modo == "claro" else "#0B141A"
         elif fondo_base in ("#e5e7eb", "#d1d5db"):
             fondo = paleta["NEUTRO_HOVER"] if clase == "Button" else paleta["SUPERFICIE"]
         elif fondo_base == "#fce7ec":
