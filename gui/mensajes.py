@@ -14,6 +14,7 @@ from gui.avatar import dibujar_avatar
 from gui.estilo import aplicar_tema_actual, crear_campo_redondeado
 from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import validar_imagen, cargar_vista_previa
+from gui.videos import validar_video, abrir_video, EXTENSIONES_VIDEO
 
 
 class ZonaScroll(tk.Canvas):
@@ -49,6 +50,7 @@ class Mensajes(tk.Frame):
         self.destino = None
         self.borradores = {}
         self.imagen_pendiente = None
+        self.video_pendiente = None
         self.ampliacion = None
         barra = tk.Frame(self, background="#FFFFFF")
         barra.pack(fill="x")
@@ -88,9 +90,9 @@ class Mensajes(tk.Frame):
         self.lista.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
         ttk.Separator(cuerpo, orient="vertical").grid(row=0, column=1, rowspan=2, sticky="ns")
         derecha = tk.Frame(cuerpo, background="#FFFFFF")
-        derecha.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=(12, 0))
+        derecha.grid(row=0, column=2, rowspan=2, sticky="nsew")
         cabecera = tk.Frame(derecha, background="#FFFFFF", pady=8)
-        cabecera.pack(fill="x")
+        cabecera.pack(fill="x", padx=(12, 0))
         self.avatar_cabecera = tk.Canvas(cabecera, width=40, height=40, background="#FFFFFF", highlightthickness=0)
         self.avatar_cabecera.pack(side="left", padx=(0, 10))
         self.cabecera = tk.Label(cabecera, text="Tus mensajes", background="#FFFFFF",
@@ -101,8 +103,7 @@ class Mensajes(tk.Frame):
         ttk.Separator(derecha, orient="horizontal").pack(fill="x")
         pie = tk.Frame(derecha, background="#FFFFFF")
         self.pie = pie
-        pie.pack(side="bottom", fill="x")
-        ttk.Separator(pie, orient="horizontal").pack(fill="x", pady=(0, 8))
+        pie.pack(side="bottom", fill="x", padx=(12, 0))
         self.preview = tk.Frame(pie, background="#FFFFFF")
         self.preview_imagen = tk.Label(self.preview, background="#FFFFFF")
         self.preview_imagen.pack()
@@ -134,7 +135,7 @@ class Mensajes(tk.Frame):
         self.historial = ZonaScroll(derecha)
         self.historial.configure(background="#0B141A")
         self.historial.interior.configure(background="#0B141A")
-        self.historial.pack(fill="both", expand=True)
+        self.historial.pack(fill="both", expand=True, padx=(12, 0))
         pie.pack_forget()
         self.vacio = tk.Label(self.historial, text="Tus conversaciones, en un solo lugar\n\nSelecciona un chat o un amigo para comenzar",
                               background="#FFFFFF", foreground="#6B7280", wraplength=280, justify="center")
@@ -263,7 +264,7 @@ class Mensajes(tk.Frame):
             self.quitar_imagen()
             self.cerrar_ampliacion()
         self.destino = destino
-        self.pie.pack(side="bottom", fill="x", before=self.historial)
+        self.pie.pack(side="bottom", fill="x", padx=(12, 0), before=self.historial)
         self.entrada.configure(state="normal")
         self.entrada.delete("1.0", "end")
         self.entrada.insert("1.0", self.borradores.get(destino, ""))
@@ -359,6 +360,20 @@ class Mensajes(tk.Frame):
                                    cursor="hand2")
                 burbuja.pack()
                 bloque_imagen.pack(anchor="e" if propio else "w", padx=8)
+            elif m.get("ruta_video") and m.get("publicacion_id") is None:
+                bloque_video = tk.Frame(fila, background="#0B141A")
+                if m["contenido"].strip():
+                    self._burbuja_texto(fila, m["contenido"],
+                                        datetime.fromisoformat(m["fecha"]).strftime("%H:%M"), propio)
+                else:
+                    tk.Label(bloque_video, text=datetime.fromisoformat(m["fecha"]).strftime("%H:%M"),
+                             background="#0B141A", foreground="#AEBAC1",
+                             font=("Segoe UI", 8)).pack(anchor="e", pady=(2, 4))
+                tk.Button(bloque_video, text="▶  Reproducir video corto",
+                          command=lambda ruta=m["ruta_video"]: abrir_video(self.gestor.ruta_video(ruta)),
+                          background="#343943", foreground="#F9FAFB", relief="flat",
+                          padx=18, pady=16, cursor="hand2").pack()
+                bloque_video.pack(anchor="e" if propio else "w", padx=8, pady=3)
             else:
                 burbuja = tk.Label(fila, text=texto, justify="left", wraplength=240, padx=12, pady=8,
                                    background=color_burbuja, foreground=color_texto,
@@ -383,6 +398,8 @@ class Mensajes(tk.Frame):
                             burbuja._foto = foto
                         except (OSError, ValueError, tk.TclError):
                             pass
+                    elif original.ruta_video:
+                        burbuja.configure(text="Video corto\nVer publicaci\u00f3n", cursor="hand2")
                     burbuja.bind("<Button-1>", lambda e, p=original: self.ver_publicacion(p))
             if m.get("ruta_imagen"):
                 try:
@@ -413,7 +430,8 @@ class Mensajes(tk.Frame):
         if self.destino is None:
             return "break"
         try:
-            self.gestor.enviar(self.destino, self.entrada.get("1.0", "end-1c"), self.imagen_pendiente)
+            self.gestor.enviar(self.destino, self.entrada.get("1.0", "end-1c"),
+                               self.imagen_pendiente, self.video_pendiente)
         except (OSError, ValueError, PermissionError) as error:
             messagebox.showerror("Mensajes", str(error), parent=self)
             return "break"
@@ -427,19 +445,31 @@ class Mensajes(tk.Frame):
         if self.destino is None:
             return
         ruta = filedialog.askopenfilename(parent=self,
-            filetypes=[("ImÃ¡genes", "*.jpg *.jpeg *.png *.webp *.gif")])
+            filetypes=[("Fotos y videos", "*.jpg *.jpeg *.png *.webp *.gif *.mp4 *.webm *.mov"),
+                       ("Todos los archivos", "*.*")])
         if not ruta:
             return
+        es_video = os.path.splitext(ruta)[1].lower() in EXTENSIONES_VIDEO
         try:
-            validar_imagen(ruta, 10 * 1024 * 1024)
-            foto = cargar_vista_previa(ruta, 180, 110)
+            if es_video:
+                validar_video(ruta)
+                foto = None
+            else:
+                validar_imagen(ruta, 10 * 1024 * 1024)
+                foto = cargar_vista_previa(ruta, 180, 110)
         except (OSError, ValueError, tk.TclError) as error:
-            messagebox.showerror("Adjuntar imagen", str(error), parent=self)
+            messagebox.showerror("Adjuntar archivo", str(error), parent=self)
             return
-        self.imagen_pendiente = ruta
-        self.preview_imagen.configure(image=foto)
-        self.preview_imagen._foto = foto
-        self.preview.pack(fill="x", before=self.entrada, pady=4)
+        self.imagen_pendiente = None if es_video else ruta
+        self.video_pendiente = ruta if es_video else None
+        if es_video:
+            self.preview_imagen.configure(image="", text="Video corto: " + os.path.basename(ruta),
+                                          foreground="#1F2937", font=("Segoe UI", 10, "bold"))
+            self.preview_imagen._foto = None
+        else:
+            self.preview_imagen.configure(image=foto, text="")
+            self.preview_imagen._foto = foto
+        self.preview.pack(fill="x", before=self.marco_entrada, pady=4)
         aplicar_tema_actual(self.preview)
 
     def elegir_destinatarios(self, identificador):
@@ -511,8 +541,9 @@ class Mensajes(tk.Frame):
 
     def quitar_imagen(self):
         self.imagen_pendiente = None
+        self.video_pendiente = None
         self.preview.pack_forget()
-        self.preview_imagen.configure(image="")
+        self.preview_imagen.configure(image="", text="")
         self.preview_imagen._foto = None
 
     def ver_publicacion(self, publicacion):

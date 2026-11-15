@@ -9,7 +9,7 @@ class Publicacion:
     """Representa una publicación escrita por una persona usuaria."""
 
     def __init__(self, identificador, nombre_usuario, contenido, fecha=None, comentarios=None,
-                 ruta_imagen="", reacciones=None):
+                 ruta_imagen="", reacciones=None, ruta_video=""):
         """Crea una publicación con fecha actual si no se especifica otra."""
         self.identificador = identificador
         self.nombre_usuario = nombre_usuario
@@ -50,6 +50,7 @@ class Publicacion:
                         "ruta_imagen": ruta,
                     })
         self.ruta_imagen = ruta_imagen if isinstance(ruta_imagen, str) else ""
+        self.ruta_video = ruta_video if isinstance(ruta_video, str) else ""
         self.reacciones = {}
         if isinstance(reacciones, dict):
             self.reacciones = {
@@ -66,6 +67,7 @@ class Publicacion:
             "fecha": self.fecha,
             "comentarios": self.comentarios,
             "ruta_imagen": self.ruta_imagen,
+            "ruta_video": self.ruta_video,
             "reacciones": self.reacciones,
         }
 
@@ -80,4 +82,5 @@ class Publicacion:
             datos.get("comentarios", []),
             datos.get("ruta_imagen", ""),
             datos.get("reacciones", {}),
+            datos.get("ruta_video", ""),
         )

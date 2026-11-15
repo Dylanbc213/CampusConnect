@@ -52,7 +52,7 @@ class GestorPublicaciones:
                 or not isinstance(publicacion.nombre_usuario, str)
                 or not publicacion.nombre_usuario
                 or not isinstance(publicacion.contenido, str)
-                or not (publicacion.contenido.strip() or publicacion.ruta_imagen)
+                or not (publicacion.contenido.strip() or publicacion.ruta_imagen or publicacion.ruta_video)
             ):
                 continue
             self.publicaciones.append(publicacion)
@@ -77,23 +77,27 @@ class GestorPublicaciones:
         self._cargar()
         return list(self.publicaciones)
 
-    def crear_publicacion(self, nombre_usuario, contenido, ruta_imagen=""):
+    def crear_publicacion(self, nombre_usuario, contenido, ruta_imagen="", ruta_video=""):
         """Crea una publicación, la añade a la lista y guarda todos los registros."""
         contenido = contenido or ""
         ruta_imagen = ruta_imagen or ""
+        ruta_video = ruta_video or ""
         if len(contenido) > self.LIMITE_CARACTERES:
             raise ValueError("La publicación no puede superar los 500 caracteres.")
         contenido = contenido.strip()
-        if not nombre_usuario.strip() or not (contenido or ruta_imagen):
+        if not nombre_usuario.strip() or not (contenido or ruta_imagen or ruta_video):
             raise ValueError("La publicación debe incluir texto o una imagen.")
         if not isinstance(ruta_imagen, str):
             raise ValueError("La ruta de imagen no es válida.")
+        if not isinstance(ruta_video, str):
+            raise ValueError("La ruta de video no es v\u00e1lida.")
         identificador = max(
             (publicacion.identificador for publicacion in self.publicaciones
              if isinstance(publicacion.identificador, int)),
             default=0,
         ) + 1
-        publicacion = Publicacion(identificador, nombre_usuario, contenido, ruta_imagen=ruta_imagen)
+        publicacion = Publicacion(identificador, nombre_usuario, contenido,
+                                  ruta_imagen=ruta_imagen, ruta_video=ruta_video)
         self.publicaciones.append(publicacion)
         try:
             self._guardar()

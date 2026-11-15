@@ -9,6 +9,7 @@ from gui.lista_publicaciones import ListaPublicaciones
 from gui.avatar import dibujar_avatar
 from gui.fechas import fecha_publicacion
 from gui.imagenes import validar_imagen, cargar_vista_previa
+from gui.videos import validar_video, abrir_video, EXTENSIONES_VIDEO
 
 
 class VentanaMuro:
@@ -98,7 +99,7 @@ class VentanaMuro:
             padre_acciones = formulario
         self.contador = tk.Label(padre_acciones, text="0 / 500 caracteres", anchor="w")
         self.contador.pack(side="left", padx=(0, 8))
-        self.boton_imagen = tk.Button(padre_acciones, text="Añadir foto", command=self._seleccionar_imagen)
+        self.boton_imagen = tk.Button(padre_acciones, text="A\u00f1adir foto/video", command=self._seleccionar_imagen)
         self.boton_imagen.pack(side="left", padx=(0, 6))
         self.estado_imagen = tk.Label(padre_acciones, text="", anchor="w", foreground="#6B7280")
         self.estado_imagen.pack(side="left", fill="x", expand=True)
@@ -228,17 +229,22 @@ class VentanaMuro:
         destino = None
         try:
             ruta_imagen = ""
+            ruta_video = ""
             if origen_imagen:
                 extension = os.path.splitext(origen_imagen)[1].lower()
                 carpeta = os.path.join(os.path.dirname(self.aplicacion.gestor_publicaciones.ruta_archivo),
-                                       "imagenes_publicaciones")
+                                       "videos_publicaciones" if extension in EXTENSIONES_VIDEO
+                                       else "imagenes_publicaciones")
                 os.makedirs(carpeta, exist_ok=True)
                 nombre_archivo = uuid.uuid4().hex + extension
                 destino = os.path.join(carpeta, nombre_archivo)
                 shutil.copyfile(origen_imagen, destino)
-                ruta_imagen = os.path.join("imagenes_publicaciones", nombre_archivo)
+                if extension in EXTENSIONES_VIDEO:
+                    ruta_video = os.path.join("videos_publicaciones", nombre_archivo)
+                else:
+                    ruta_imagen = os.path.join("imagenes_publicaciones", nombre_archivo)
             self.aplicacion.gestor_publicaciones.crear_publicacion(
-                self.usuario.nombre_usuario, contenido, ruta_imagen,
+                self.usuario.nombre_usuario, contenido, ruta_imagen, ruta_video,
             )
         except ValueError as error:
             self._eliminar_imagen_temporal(destino)
@@ -272,12 +278,16 @@ class VentanaMuro:
     def _seleccionar_imagen(self):
         ruta = filedialog.askopenfilename(
             parent=self.ventana,
-            filetypes=[("Imágenes", "*.jpg *.jpeg *.png *.webp *.gif")],
+            filetypes=[("Fotos y videos", "*.jpg *.jpeg *.png *.webp *.gif *.mp4 *.webm *.mov"),
+                       ("Todos los archivos", "*.*")],
         )
         if not ruta:
             return
         try:
-            validar_imagen(ruta)
+            if os.path.splitext(ruta)[1].lower() in EXTENSIONES_VIDEO:
+                validar_video(ruta)
+            else:
+                validar_imagen(ruta)
         except (OSError, ValueError) as error:
             messagebox.showerror("Imagen", str(error), parent=self.ventana)
             return
@@ -314,6 +324,23 @@ class VentanaMuro:
         if abs(ancho - self._ancho_preview) < 8 and self.preview_item is not None:
             return
         try:
+            if os.path.splitext(self.imagen_seleccionada)[1].lower() in EXTENSIONES_VIDEO:
+                self.preview_canvas.delete("all")
+                alto = min(240, max(150, ancho * 9 // 16))
+                self.preview_canvas.configure(height=alto, scrollregion=(0, 0, ancho, alto))
+                self.preview_canvas.create_rectangle(2, 2, ancho, alto,
+                                                     fill="#111318", outline="#343943")
+                self.preview_canvas.create_text(ancho / 2, alto / 2 - 12, text="▶",
+                                                fill="#FFFFFF", font=("Segoe UI Symbol", 30, "bold"))
+                self.preview_canvas.create_text(ancho / 2, alto / 2 + 30,
+                                                text="Video corto: clic para reproducir",
+                                                fill="#FFFFFF", font=("Segoe UI", 10))
+                self.preview_canvas.bind(
+                    "<Button-1>", lambda evento, ruta=self.imagen_seleccionada: abrir_video(ruta))
+                self.preview_item = "video"
+                self._ancho_preview = ancho
+                self.error_preview.configure(text="")
+                return
             self.preview_imagen = cargar_vista_previa(self.imagen_seleccionada, ancho)
             ancho_imagen, alto_imagen = self.preview_imagen.width(), self.preview_imagen.height()
             if self.preview_item is None:
