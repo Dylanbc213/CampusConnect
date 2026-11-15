@@ -11,7 +11,7 @@ import os
 from tkinter import messagebox, filedialog, ttk
 from datetime import datetime
 from gui.avatar import dibujar_avatar
-from gui.estilo import aplicar_tema_actual
+from gui.estilo import aplicar_tema_actual, crear_campo_redondeado
 from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import validar_imagen, cargar_vista_previa
 
@@ -78,8 +78,10 @@ class Mensajes(tk.Frame):
         else:
             lupa.create_oval(3, 3, 14, 14, outline="#E4002B", width=2)
             lupa.create_line(13, 13, 20, 20, fill="#E4002B", width=2)
-        self.busqueda = tk.Entry(buscar, relief="flat", font=("Segoe UI", 10), width=12)
-        self.busqueda.pack(fill="x", expand=True)
+        self.marco_busqueda, self.busqueda = crear_campo_redondeado(
+            buscar, tk.Entry, relief="flat", font=("Segoe UI", 10), width=12,
+            background="#171A20", foreground="#1F2937", insertbackground="#E4002B")
+        self.marco_busqueda.pack(fill="x", expand=True)
         self.busqueda.configure(background="#F3F4F6", insertbackground="#E4002B")
         self.busqueda.bind("<KeyRelease>", lambda e: self.recargar())
         self.lista = ZonaScroll(cuerpo)
@@ -110,9 +112,11 @@ class Mensajes(tk.Frame):
                               ("Cancelar imagen", self.quitar_imagen)):
             tk.Button(controles, text=texto, command=accion, background="#FFFFFF",
                       foreground="#E4002B", relief="flat").pack(side="left")
-        self.entrada = tk.Text(pie, width=1, height=3, wrap="word", font=("Segoe UI", 11), state="disabled",
-                               relief="flat", padx=12, pady=10)
-        self.entrada.pack(fill="x")
+        self.marco_entrada, self.entrada = crear_campo_redondeado(
+            pie, tk.Text, width=1, height=3, wrap="word", font=("Segoe UI", 11),
+            state="disabled", relief="flat", padx=12, pady=8,
+            background="#171A20", foreground="#F9FAFB", insertbackground="#F9FAFB")
+        self.marco_entrada.pack(fill="x")
         self.entrada.bind("<Return>", self.enviar)
         self.entrada.bind("<Shift-Return>", self._salto)
         self.boton = tk.Button(pie, text="", command=self.enviar, background="#FFFFFF",

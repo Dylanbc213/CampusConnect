@@ -25,7 +25,6 @@ class ListaAmigos(tk.Frame):
         self.scroll = ttk.Scrollbar(self.zona, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.pack(side="left", fill="both", expand=True)
-        self.scroll.pack(side="right", fill="y")
         self.tarjetas = tk.Frame(self.canvas, background="#F3F4F6")
         self.ventana = self.canvas.create_window((0, 0), window=self.tarjetas, anchor="nw")
         self.tarjetas.bind("<Configure>", lambda evento: self.canvas.configure(scrollregion=self.canvas.bbox("all")))

@@ -83,9 +83,9 @@ class CampusConnectApp:
     def _actualizar_boton_tema(self):
         if hasattr(self, "boton_tema"):
             if self.modo_tema == "oscuro":
-                self.boton_tema.configure(text="☀")
+                self.boton_tema.configure(text="\u2600")
             else:
-                self.boton_tema.configure(text="☾")
+                self.boton_tema.configure(text="\u263e")
 
     def alternar_tema(self):
         nuevo = "oscuro" if self.modo_tema == "claro" else "claro"

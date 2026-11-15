@@ -5,7 +5,7 @@ import tkinter as tk
 import uuid
 from tkinter import filedialog, messagebox
 
-from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual
+from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual, crear_campo_redondeado
 from gui.lista_publicaciones import ListaPublicaciones
 from gui.avatar import dibujar_avatar
 from gui.editor_foto import EditorFoto
@@ -69,11 +69,12 @@ class Perfil(tk.Frame):
                                       command=lambda: self.abrir_chat(self.usuario.nombre_usuario))
         self.editor = tk.Frame(self.tarjeta, background=BLANCO)
         tk.Label(self.editor, text="Nombre visible", background=BLANCO).pack(anchor="w", pady=(10, 2))
-        self.campo_nombre = tk.Entry(self.editor)
-        self.campo_nombre.pack(fill="x")
+        self.marco_campo_nombre, self.campo_nombre = crear_campo_redondeado(self.editor, tk.Entry)
+        self.marco_campo_nombre.pack(fill="x")
         tk.Label(self.editor, text="Biografía (máximo 150 caracteres)", background=BLANCO).pack(anchor="w", pady=(10, 2))
-        self.campo_bio = tk.Text(self.editor, height=4, wrap="word")
-        self.campo_bio.pack(fill="x")
+        self.marco_campo_bio, self.campo_bio = crear_campo_redondeado(
+            self.editor, tk.Text, height=4, wrap="word")
+        self.marco_campo_bio.pack(fill="x")
         self.campo_bio.bind("<KeyRelease>", self._contar_bio)
         self.contador_bio = tk.Label(self.editor, text="0 / 150", background=BLANCO, foreground="#6B7280")
         self.contador_bio.pack(anchor="e")

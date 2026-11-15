@@ -8,7 +8,7 @@ import uuid
 import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
-from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual
+from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual, crear_campo_redondeado
 from gui.avatar import dibujar_avatar
 from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import cargar_vista_previa, validar_imagen
@@ -450,8 +450,9 @@ class TarjetaPublicacion(tk.Frame):
         self.etiqueta_destinatario.pack(fill="x", padx=8, pady=(10, 3))
         entrada = tk.Frame(self.comentarios_frame, background=GRIS, padx=7, pady=6)
         entrada.pack(fill="x", pady=(4, 2))
-        self.campo_comentario = tk.Entry(entrada, relief="flat", font=("Segoe UI", 10))
-        self.campo_comentario.pack(side="left", fill="x", expand=True, padx=(2, 8))
+        self.marco_campo_comentario, self.campo_comentario = crear_campo_redondeado(
+            entrada, tk.Entry, relief="flat", font=("Segoe UI", 10))
+        self.marco_campo_comentario.pack(side="left", fill="x", expand=True, padx=(2, 8))
         self.campo_comentario.bind("<Return>", lambda evento: self._comentar())
         self.icono_imagen_respuesta = crear_icono("imagen")
         self.boton_imagen_respuesta = tk.Button(

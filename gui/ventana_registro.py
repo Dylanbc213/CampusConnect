@@ -1,7 +1,7 @@
 """Formulario básico de registro."""
 
 import tkinter as tk
-from gui.estilo import estructura, decorar, encabezado
+from gui.estilo import estructura, decorar, encabezado, crear_campo_redondeado
 from tkinter import messagebox
 
 
@@ -15,17 +15,19 @@ class VentanaRegistro:
         lateral, contenedor = estructura(contenedor, formulario=True)
         tk.Label(contenedor, text="Crear cuenta", font=("Arial", 18, "bold")).pack(pady=16)
         tk.Label(contenedor, text="Nombre completo").pack(anchor="w")
-        self.campo_nombre = tk.Entry(contenedor)
-        self.campo_nombre.pack(fill="x", pady=(4, 10))
+        self.marco_nombre, self.campo_nombre = crear_campo_redondeado(contenedor, tk.Entry)
+        self.marco_nombre.pack(fill="x", pady=(4, 10))
         tk.Label(contenedor, text="Nombre de usuario").pack(anchor="w")
-        self.campo_usuario = tk.Entry(contenedor)
-        self.campo_usuario.pack(fill="x", pady=(4, 10))
+        self.marco_usuario, self.campo_usuario = crear_campo_redondeado(contenedor, tk.Entry)
+        self.marco_usuario.pack(fill="x", pady=(4, 10))
         tk.Label(contenedor, text="Contraseña").pack(anchor="w")
-        self.campo_contrasena = tk.Entry(contenedor, show="*")
-        self.campo_contrasena.pack(fill="x", pady=(4, 10))
+        self.marco_contrasena, self.campo_contrasena = crear_campo_redondeado(
+            contenedor, tk.Entry, show="*")
+        self.marco_contrasena.pack(fill="x", pady=(4, 10))
         tk.Label(contenedor, text="Confirmar contraseña").pack(anchor="w")
-        self.campo_confirmacion = tk.Entry(contenedor, show="*")
-        self.campo_confirmacion.pack(fill="x", pady=(4, 10))
+        self.marco_confirmacion, self.campo_confirmacion = crear_campo_redondeado(
+            contenedor, tk.Entry, show="*")
+        self.marco_confirmacion.pack(fill="x", pady=(4, 10))
         self.visible = False
         self.boton_visibilidad = tk.Button(contenedor, text="Mostrar contraseñas", command=self._alternar_contrasena)
         self.boton_visibilidad.pack(anchor="w")
