@@ -7,6 +7,70 @@ GRIS = "#F3F4F6"
 TEXTO = "#1F2937"
 
 
+class CampoRedondeado(tk.Frame):
+    """Entrada con fondo redondeado y un campo Tk estándar en su interior."""
+
+    def __init__(self, padre, clase, **opciones):
+        fondo = padre.cget("background")
+        super().__init__(padre, background=fondo, highlightthickness=0, bd=0)
+        self.canvas = tk.Canvas(self, background=fondo, highlightthickness=0, bd=0,
+                                width=220, height=36)
+        self.canvas.pack(fill="both", expand=True)
+        self.campo = clase(self.canvas, **opciones)
+        self.campo.update_idletasks()
+        self.canvas.configure(height=max(36, self.campo.winfo_reqheight() + 8))
+        for opcion in ("relief", "borderwidth", "highlightthickness"):
+            try:
+                self.campo.configure(**{opcion: "flat" if opcion == "relief" else 0})
+            except tk.TclError:
+                pass
+        self.ventana = self.canvas.create_window(4, 4, window=self.campo, anchor="nw")
+        self.canvas.bind("<Configure>", self._ajustar)
+        self.campo.bind("<FocusIn>", self._foco, add="+")
+        self.campo.bind("<FocusOut>", self._foco, add="+")
+        self._campus_redibujar_campo = self._dibujar
+        self._enfocado = False
+        self.after_idle(self._dibujar)
+
+    def _ajustar(self, evento):
+        self.canvas.coords(self.ventana, 4, 4)
+        self.canvas.itemconfigure(self.ventana, width=max(1, evento.width - 8),
+                                  height=max(1, evento.height - 8))
+        self._dibujar()
+
+    def _foco(self, evento=None):
+        self._enfocado = self.campo.focus_get() == self.campo
+        self._dibujar()
+
+    def _dibujar(self):
+        try:
+            from PIL import Image, ImageDraw, ImageTk
+            ancho, alto = max(12, self.canvas.winfo_width()), max(12, self.canvas.winfo_height())
+            modo = getattr(self.winfo_toplevel(), "_campus_modo_tema", "claro")
+            paleta = TEMAS[modo]
+            fondo = self.campo.cget("background")
+            fondo_padre = self.master.cget("background")
+            borde = paleta["ACENTO"] if self._enfocado else paleta["BORDE"]
+            escala = 3
+            imagen = Image.new("RGBA", (ancho * escala, alto * escala), fondo_padre)
+            dibujo = ImageDraw.Draw(imagen)
+            dibujo.rounded_rectangle((0, 0, (ancho - 1) * escala, (alto - 1) * escala),
+                                     radius=9 * escala, fill=fondo, outline=borde, width=escala)
+            imagen = imagen.resize((ancho, alto), Image.Resampling.LANCZOS)
+            self._campus_imagen_campo = ImageTk.PhotoImage(imagen)
+            self.canvas.delete("campo")
+            self.canvas.create_image(0, 0, image=self._campus_imagen_campo,
+                                     anchor="nw", tags="campo")
+            self.canvas.tag_lower("campo")
+        except (ImportError, tk.TclError, ValueError):
+            pass
+
+
+def crear_campo_redondeado(padre, clase, **opciones):
+    marco = CampoRedondeado(padre, clase, **opciones)
+    return marco, marco.campo
+
+
 def preparar(ventana):
     ventana.configure(background=BLANCO)
     ancho = min(1000, ventana.winfo_screenwidth() - 40)
@@ -103,6 +167,65 @@ def _es_tarjeta(widget, originales):
         return False
 
 
+def _dibujar_boton_redondeado(widget, color, fondo_padre):
+    if widget.winfo_class() != "Button":
+        return
+    try:
+        texto = widget.cget("text")
+        icono = getattr(widget, "_campus_imagen", None)
+        if icono is not None and texto:
+            widget._campus_texto_boton = texto
+        elif icono is not None:
+            texto = getattr(widget, "_campus_texto_boton", "")
+        if not texto and icono is None:
+            return
+        from PIL import Image, ImageDraw, ImageFont, ImageTk
+        import tkinter.font as tkfont
+        fuente = tkfont.Font(widget, font=widget.cget("font")) if texto else None
+        icono_pil = ImageTk.getimage(icono).convert("RGBA") if icono is not None else None
+        if not hasattr(widget, "_campus_tamano_boton"):
+            widget.update_idletasks()
+            ancho_texto = fuente.measure(texto) + 30 if texto else 0
+            ancho_icono = icono_pil.width + 28 if icono_pil is not None else 0
+            widget._campus_tamano_boton = (
+                max(widget.winfo_reqwidth(), ancho_texto, ancho_icono),
+                max(34, widget.winfo_reqheight()),
+            )
+        ancho, alto = widget._campus_tamano_boton
+        escala = 4
+        imagen = Image.new("RGBA", (ancho * escala, alto * escala), (0, 0, 0, 0))
+        dibujo = ImageDraw.Draw(imagen)
+        dibujo.rounded_rectangle(
+            (1 * escala, 1 * escala, (ancho - 2) * escala, (alto - 2) * escala),
+            radius=14 * escala, fill=color, outline=color, width=1 * escala,
+        )
+        if icono_pil is not None:
+            x_icono = (ancho - icono_pil.width) // 2
+            y_icono = max(1, (alto - icono_pil.height - (12 if texto else 0)) // 2)
+            icono_grande = icono_pil.resize(
+                (icono_pil.width * escala, icono_pil.height * escala), Image.Resampling.LANCZOS)
+            imagen.alpha_composite(icono_grande, (x_icono * escala, y_icono * escala))
+            if texto:
+                try:
+                    fuente_pil = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 9 * escala)
+                except OSError:
+                    fuente_pil = ImageFont.load_default(size=9 * escala)
+                dibujo.text((ancho * escala / 2, (alto - 5) * escala), texto,
+                            anchor="mm", font=fuente_pil, fill=widget.cget("foreground"))
+        imagen = imagen.resize((ancho, alto), Image.Resampling.LANCZOS)
+        widget._campus_fondo_redondeado = ImageTk.PhotoImage(imagen)
+        widget._campus_color_fondo = color
+        opciones = {"image": widget._campus_fondo_redondeado, "compound": "center",
+                    "background": fondo_padre, "activebackground": fondo_padre,
+                    "borderwidth": 0, "highlightthickness": 0,
+                    "width": ancho, "height": alto}
+        if icono is not None:
+            opciones["text"] = ""
+        widget.configure(**opciones)
+    except (ImportError, tk.TclError, ValueError, TypeError):
+        pass
+
+
 def aplicar_tema(widget, modo):
     """Pinta en sitio un ?rbol Tk completo, conservando sus valores base."""
     modo = modo if modo in TEMAS else "claro"
@@ -143,6 +266,8 @@ def aplicar_tema(widget, modo):
             fondo = paleta["SUPERFICIE"]
         elif fondo_base == "#fafafa":
             fondo = paleta["CAMPO"]
+        elif fondo_base == "#0b141a":
+            fondo = paleta["FONDO"] if modo == "claro" else "#0B141A"
         elif fondo_base in ("#e5e7eb", "#d1d5db"):
             fondo = paleta["NEUTRO_HOVER"] if clase == "Button" else paleta["SUPERFICIE"]
         elif fondo_base == "#fce7ec":
@@ -222,6 +347,8 @@ def aplicar_tema(widget, modo):
         try:
             if opciones:
                 actual.configure(**opciones)
+            if clase == "Button":
+                _dibujar_boton_redondeado(actual, fondo, parent_bg)
         except tk.TclError:
             pass
 
@@ -257,6 +384,9 @@ def aplicar_tema(widget, modo):
             hijos = []
         for hijo in hijos:
             pintar(hijo, bg_hijo)
+        redibujar_campo = getattr(actual, "_campus_redibujar_campo", None)
+        if callable(redibujar_campo):
+            redibujar_campo()
 
     pintar(widget, fondo_inicial)
     try:
@@ -274,11 +404,20 @@ def _hover(widget):
     modo = getattr(widget.winfo_toplevel(), "_campus_modo_tema", "claro")
     paleta = TEMAS[modo]
     if getattr(widget, "_campus_rol", None) == "tema":
-        widget.configure(background=paleta["SUPERFICIE"],
-                         foreground="#FFFFFF" if modo == "oscuro" else paleta["TEXTO"])
+        frente = "#FFFFFF" if modo == "oscuro" else paleta["TEXTO"]
+        fondo_padre = widget.master.cget("background")
+        widget.configure(foreground=frente)
+        _dibujar_boton_redondeado(widget, paleta["SUPERFICIE"], fondo_padre)
         return
     if getattr(widget, "_campus_rol", None) in ("actualizar", "icono"):
-        widget.configure(background=paleta["NEUTRO_HOVER"], foreground=paleta["TEXTO"])
+        widget.configure(foreground=paleta["TEXTO"])
+        if getattr(widget, "_campus_icono", None):
+            from gui.iconos import crear_icono
+            widget._campus_imagen = crear_icono(widget._campus_icono, color=paleta["TEXTO"])
+        try:
+            _dibujar_boton_redondeado(widget, paleta["NEUTRO_HOVER"], widget.master.cget("background"))
+        except tk.TclError:
+            pass
         return
     if getattr(widget, "_campus_rol", None) in ("reaccion", "navegacion") and getattr(
             widget, "_campus_seleccionado", False):
@@ -286,7 +425,9 @@ def _hover(widget):
     fondo = (paleta["ROJO_HOVER"] if (base.get("background") or "").lower() == "#e4002b"
              else paleta["NEUTRO_HOVER"])
     try:
-        widget.configure(background=fondo)
+        fondo_padre = widget.master.cget("background")
+        widget.configure(foreground=widget.cget("foreground"))
+        _dibujar_boton_redondeado(widget, fondo, fondo_padre)
     except tk.TclError:
         pass
 
@@ -294,7 +435,12 @@ def _hover(widget):
 def _salir_hover(widget):
     reposo = getattr(widget, '_campus_reposo', None)
     if reposo:
-        widget.configure(background=reposo[0], foreground=reposo[1])
+        try:
+            fondo_padre = widget.master.cget("background")
+        except tk.TclError:
+            fondo_padre = reposo[0]
+        widget.configure(foreground=reposo[1])
+        _dibujar_boton_redondeado(widget, reposo[0], fondo_padre)
 
 
 def aplicar_tema_actual(widget):

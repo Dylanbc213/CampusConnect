@@ -2,6 +2,7 @@
 
 import tkinter as tk
 from tkinter import messagebox
+from gui.estilo import crear_campo_redondeado
 
 
 class VentanaLogin:
@@ -40,20 +41,20 @@ class VentanaLogin:
 
         tk.Label(self.tarjeta, text="Nombre de usuario", background=blanco, foreground=texto,
                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.campo_usuario = tk.Entry(
-            self.tarjeta, relief="flat", background="#FAFAFA", foreground=texto,
+        self.marco_usuario, self.campo_usuario = crear_campo_redondeado(
+            self.tarjeta, tk.Entry, relief="flat", background="#FAFAFA", foreground=texto,
             insertbackground=texto, highlightthickness=1, highlightbackground="#D1D5DB",
             highlightcolor=rojo, font=("Segoe UI", 12),
         )
-        self.campo_usuario.pack(fill="x", pady=(5, 14), ipady=8)
+        self.marco_usuario.pack(fill="x", pady=(5, 14))
         tk.Label(self.tarjeta, text="Contraseña", background=blanco, foreground=texto,
                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.campo_contrasena = tk.Entry(
-            self.tarjeta, show="*", relief="flat", background="#FAFAFA", foreground=texto,
+        self.marco_contrasena, self.campo_contrasena = crear_campo_redondeado(
+            self.tarjeta, tk.Entry, show="*", relief="flat", background="#FAFAFA", foreground=texto,
             insertbackground=texto, highlightthickness=1, highlightbackground="#D1D5DB",
             highlightcolor=rojo, font=("Segoe UI", 12),
         )
-        self.campo_contrasena.pack(fill="x", pady=(5, 2), ipady=8)
+        self.marco_contrasena.pack(fill="x", pady=(5, 2))
         self.visible = False
         self._sesion_abierta = False
         self.boton_visibilidad = tk.Button(

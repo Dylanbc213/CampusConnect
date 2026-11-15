@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 from gui.ventana_muro import VentanaMuro
-from gui.estilo import estructura, decorar, encabezado, aplicar_tema_actual
+from gui.estilo import estructura, decorar, encabezado, aplicar_tema_actual, crear_campo_redondeado
 from gui.lista_amigos import ListaAmigos
 from gui.perfil import Perfil
 from gui.avatar import dibujar_avatar
@@ -50,9 +50,10 @@ class PanelPrincipal:
                  foreground="#6B7280", font=("Segoe UI", 11)).pack(anchor="w", pady=(0, 16))
         barra_busqueda = tk.Frame(contenedor, background="#F3F4F6", padx=10, pady=6)
         barra_busqueda.pack(fill="x", pady=(0, 12))
-        self.campo_busqueda = tk.Entry(barra_busqueda, relief="flat", background="#F3F4F6",
-                                      foreground="#1F2937", font=("Segoe UI", 12))
-        self.campo_busqueda.pack(side="left", fill="x", expand=True, padx=4)
+        self.marco_busqueda_usuarios, self.campo_busqueda = crear_campo_redondeado(
+            barra_busqueda, tk.Entry, relief="flat", background="#F3F4F6",
+            foreground="#1F2937", font=("Segoe UI", 12))
+        self.marco_busqueda_usuarios.pack(side="left", fill="x", expand=True, padx=4)
         self.campo_busqueda.bind("<KeyRelease>", lambda evento: self._buscar())
         for evento in ("<<Paste>>", "<<Cut>>"):
             self.campo_busqueda.bind(evento, lambda evento: self.campo_busqueda.after_idle(self._buscar))
@@ -74,7 +75,6 @@ class PanelPrincipal:
         self.scroll_resultados = ttk.Scrollbar(lista, orient="vertical", command=self.canvas_resultados.yview)
         self.canvas_resultados.configure(yscrollcommand=self.scroll_resultados.set)
         self.canvas_resultados.pack(side="left", fill="both", expand=True)
-        self.scroll_resultados.pack(side="right", fill="y")
         self.lista_resultados = tk.Frame(self.canvas_resultados, background="#F3F4F6")
         self.ventana_resultados = self.canvas_resultados.create_window((0, 0), window=self.lista_resultados, anchor="nw")
         self.lista_resultados.bind("<Configure>", lambda evento: self.canvas_resultados.configure(

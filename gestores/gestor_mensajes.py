@@ -6,6 +6,7 @@ import uuid
 import shutil
 from datetime import datetime
 from gui.imagenes import validar_imagen
+from gui.videos import validar_video
 
 
 class GestorMensajes:
@@ -63,10 +64,21 @@ class GestorMensajes:
             raise ValueError("Ruta de imagen inválida.")
         return ruta
 
-    def enviar(self, destino, contenido, imagen=None):
+    def ruta_video(self, relativa):
+        if not isinstance(relativa, str) or not relativa or os.path.isabs(relativa):
+            raise ValueError("Ruta de video inv\u00e1lida.")
+        carpeta = os.path.realpath(os.path.join(os.path.dirname(self.ruta), "videos"))
+        ruta = os.path.realpath(os.path.join(os.path.dirname(self.ruta), relativa))
+        if os.path.commonpath([carpeta, ruta]) != carpeta or ruta == carpeta:
+            raise ValueError("Ruta de video inv\u00e1lida.")
+        return ruta
+
+    def enviar(self, destino, contenido, imagen=None, video=None):
         usuario = self._validar(destino)
-        if not isinstance(contenido, str) or not (contenido.strip() or imagen):
-            raise ValueError("Escribe un mensaje o adjunta una imagen.")
+        if not isinstance(contenido, str) or not (contenido.strip() or imagen or video):
+            raise ValueError("Escribe un mensaje o adjunta una imagen o un video.")
+        if imagen and video:
+            raise ValueError("Adjunta una imagen o un video por mensaje.")
         if len(contenido) > 5000:
             raise ValueError("El mensaje no puede superar 5000 caracteres.")
         datos = self._leer()
@@ -83,6 +95,14 @@ class GestorMensajes:
                 shutil.copyfile(imagen, copiada)
                 validar_imagen(copiada, 10 * 1024 * 1024)
                 mensaje["ruta_imagen"] = relativa
+            elif video:
+                validar_video(video)
+                relativa = "videos/" + uuid.uuid4().hex + os.path.splitext(video)[1].lower()
+                copiada = self.ruta_video(relativa)
+                os.makedirs(os.path.dirname(copiada), exist_ok=True)
+                shutil.copyfile(video, copiada)
+                validar_video(copiada)
+                mensaje["ruta_video"] = relativa
             datos.append(mensaje)
             self._guardar(datos)
         except Exception:

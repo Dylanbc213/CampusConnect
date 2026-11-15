@@ -4,6 +4,10 @@ import os
 import tkinter as tk
 
 from gui.imagenes import Image, ImageOps, ImageTk
+try:
+    from PIL import ImageDraw, ImageFont
+except ImportError:
+    ImageDraw = ImageFont = None
 
 
 def foto_circular(ruta, tamano):
@@ -46,8 +50,29 @@ def dibujar_avatar(canvas, usuario, carpeta_datos, tamano):
             return imagen
     except (OSError, tk.TclError, ValueError):
         pass
-    canvas.create_oval(0, 0, tamano, tamano, fill="#FCE7EC", outline="")
     iniciales = "".join(p[0] for p in usuario.nombre_visible.split()[:2]).upper() or "?"
+    if Image is not None and ImageDraw is not None and ImageFont is not None:
+        escala = 4
+        lado = tamano * escala
+        imagen = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
+        dibujo = ImageDraw.Draw(imagen)
+        dibujo.ellipse((0, 0, lado - 1, lado - 1), fill="#FCE7EC")
+        tamano_fuente = max(9, tamano // 4) * escala
+        try:
+            fuente = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", tamano_fuente)
+        except OSError:
+            try:
+                fuente = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", tamano_fuente)
+            except OSError:
+                fuente = ImageFont.load_default(size=tamano_fuente)
+        dibujo.text((lado / 2, lado / 2), iniciales, font=fuente,
+                    fill="#E4002B", anchor="mm")
+        imagen = imagen.resize((tamano, tamano), Image.Resampling.LANCZOS)
+        foto = ImageTk.PhotoImage(imagen)
+        canvas.create_image(tamano / 2, tamano / 2, image=foto)
+        canvas._foto_perfil = foto
+        return foto
+    canvas.create_oval(0, 0, tamano, tamano, fill="#FCE7EC", outline="")
     canvas.create_text(tamano / 2, tamano / 2, text=iniciales, fill="#E4002B",
                        font=("Segoe UI", max(9, tamano // 4), "bold"))
     return None

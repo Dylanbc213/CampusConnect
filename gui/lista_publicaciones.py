@@ -1,17 +1,20 @@
 """Tarjetas compartidas para feeds y perfiles, con comentarios integrados."""
 
 import os
+import re
 import shutil
 import tkinter as tk
 import uuid
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
-from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual
+from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual, crear_campo_redondeado
 from gui.avatar import dibujar_avatar
 from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import cargar_vista_previa, validar_imagen
 from gui.iconos import crear_icono
 from gui.fechas import fecha_publicacion
+from gui.videos import abrir_video
 
 
 class ListaPublicaciones(tk.Frame):
@@ -104,10 +107,34 @@ class TarjetaPublicacion(tk.Frame):
             for widget in (avatar, self.autor):
                 widget.bind("<Button-1>", lambda evento, persona=autor: abrir_perfil(persona))
         self.columnconfigure(1, weight=1)
-        self.contenido = tk.Label(self, text=publicacion.contenido, background=BLANCO,
-                                  foreground=TEXTO, font=("Segoe UI", 11), anchor="w",
-                                  justify="left", wraplength=560)
+        self.contenido = tk.Text(self, background=BLANCO, foreground=TEXTO,
+                                 font=("Segoe UI", 11), wrap="word", height=1,
+                                 relief="flat", borderwidth=0, highlightthickness=0,
+                                 padx=0, pady=0, cursor="arrow")
+        self.contenido.insert("1.0", publicacion.contenido)
+        for numero, coincidencia in enumerate(re.finditer(
+                r"https?://[^\s<>()]+|www\.[^\s<>()]+", publicacion.contenido)):
+            inicio, fin = coincidencia.span()
+            while fin > inicio and publicacion.contenido[fin - 1] in ".,!?;:":
+                fin -= 1
+            if fin == inicio:
+                continue
+            etiqueta = "enlace_publicacion_{}".format(numero)
+            comienzo_tk = "1.0 + {} chars".format(inicio)
+            fin_tk = "1.0 + {} chars".format(fin)
+            self.contenido.tag_add(etiqueta, comienzo_tk, fin_tk)
+            self.contenido.tag_configure(etiqueta, foreground=ROJO, underline=True)
+            url = publicacion.contenido[inicio:fin]
+            destino = url if url.lower().startswith(("http://", "https://")) else "https://" + url
+            self.contenido.tag_bind(
+                etiqueta, "<Button-1>", lambda evento, enlace=destino: webbrowser.open(enlace))
+            self.contenido.tag_bind(etiqueta, "<Enter>",
+                                    lambda evento: self.contenido.configure(cursor="hand2"))
+            self.contenido.tag_bind(etiqueta, "<Leave>",
+                                    lambda evento: self.contenido.configure(cursor="arrow"))
+        self.contenido.configure(state="disabled")
         self.contenido.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(14, 10))
+        self.contenido.bind("<Configure>", self._ajustar_alto_contenido)
         self.imagen = None
         if publicacion.ruta_imagen:
             carpeta_datos = os.path.dirname(aplicacion.gestor_usuarios.ruta_archivo)
@@ -124,6 +151,16 @@ class TarjetaPublicacion(tk.Frame):
                     background=BLANCO, foreground="#B42318", font=("Segoe UI", 10), anchor="w",
                 )
                 self.aviso_imagen.grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 10))
+        elif publicacion.ruta_video:
+            carpeta_datos = os.path.dirname(aplicacion.gestor_usuarios.ruta_archivo)
+            ruta_video = (publicacion.ruta_video if os.path.isabs(publicacion.ruta_video)
+                          else os.path.join(carpeta_datos, publicacion.ruta_video))
+            self.video_frame = tk.Frame(self, background="#111318", padx=18, pady=24)
+            self.video_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(0, 12))
+            tk.Button(self.video_frame, text="▶  Reproducir video corto",
+                      command=lambda r=ruta_video: abrir_video(r), background=ROJO,
+                      foreground=BLANCO, relief="flat", padx=18, pady=12,
+                      cursor="hand2", font=("Segoe UI", 11, "bold")).pack(anchor="center")
         acciones = tk.Frame(self, background=BLANCO)
         acciones.grid(row=4, column=1, columnspan=2, sticky="e", pady=(6, 0))
         self.boton_comentarios = tk.Button(
@@ -200,6 +237,15 @@ class TarjetaPublicacion(tk.Frame):
             persona = aplicacion.gestor_usuarios.usuarios_por_nombre.get(reposteador)
             if persona and abrir_perfil:
                 etiqueta.bind("<Button-1>", lambda evento: abrir_perfil(persona))
+
+    def _ajustar_alto_contenido(self, evento=None):
+        try:
+            resultado = self.contenido.count("1.0", "end-1c", "displaylines")
+            alto = max(1, int(resultado[0])) if resultado else 1
+            if int(self.contenido.cget("height")) != alto:
+                self.contenido.configure(height=alto)
+        except (tk.TclError, ValueError, TypeError):
+            pass
 
     def _repostear(self):
         gestor = self.aplicacion.gestor_publicaciones
@@ -365,7 +411,8 @@ class TarjetaPublicacion(tk.Frame):
                 if self.abrir_perfil:
                     avatar.bind("<Button-1>", lambda evento, persona=usuario: self.abrir_perfil(persona))
             autor = tk.Label(
-                fila, text="@{}  ?  {}".format(comentario["nombre_usuario"], comentario["fecha"]),
+                fila, text="@{}  \u00b7  {}".format(
+                    comentario["nombre_usuario"], fecha_publicacion(comentario["fecha"])),
                 background=BLANCO, foreground="#6B7280", font=("Segoe UI", 9, "bold"),
                 anchor="w", cursor="hand2" if usuario and self.abrir_perfil else "",
             )
@@ -414,8 +461,9 @@ class TarjetaPublicacion(tk.Frame):
         self.etiqueta_destinatario.pack(fill="x", padx=8, pady=(10, 3))
         entrada = tk.Frame(self.comentarios_frame, background=GRIS, padx=7, pady=6)
         entrada.pack(fill="x", pady=(4, 2))
-        self.campo_comentario = tk.Entry(entrada, relief="flat", font=("Segoe UI", 10))
-        self.campo_comentario.pack(side="left", fill="x", expand=True, padx=(2, 8))
+        self.marco_campo_comentario, self.campo_comentario = crear_campo_redondeado(
+            entrada, tk.Entry, relief="flat", font=("Segoe UI", 10))
+        self.marco_campo_comentario.pack(side="left", fill="x", expand=True, padx=(2, 8))
         self.campo_comentario.bind("<Return>", lambda evento: self._comentar())
         self.icono_imagen_respuesta = crear_icono("imagen")
         self.boton_imagen_respuesta = tk.Button(

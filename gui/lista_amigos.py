@@ -14,7 +14,6 @@ class ListaAmigos(tk.Frame):
                  font=("Segoe UI", 24, "bold")).pack(side="left")
         self.contador = tk.Label(cabecera, text="0", background="#FCE7EC", foreground="#E4002B",
                                  font=("Segoe UI", 12, "bold"), padx=14, pady=6)
-        self.contador.pack(side="right", padx=4)
         tk.Label(self, text="Tu comunidad, cada vez más cerca.", anchor="w", background="#FFFFFF",
                  foreground="#6B7280", font=("Segoe UI", 11)).pack(fill="x", pady=(0, 20))
         self.zona = tk.Frame(self, background="#F3F4F6", padx=8, pady=8)
@@ -26,7 +25,6 @@ class ListaAmigos(tk.Frame):
         self.scroll = ttk.Scrollbar(self.zona, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.pack(side="left", fill="both", expand=True)
-        self.scroll.pack(side="right", fill="y")
         self.tarjetas = tk.Frame(self.canvas, background="#F3F4F6")
         self.ventana = self.canvas.create_window((0, 0), window=self.tarjetas, anchor="nw")
         self.tarjetas.bind("<Configure>", lambda evento: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
