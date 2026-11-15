@@ -109,7 +109,30 @@ class GestorUsuarios:
             return []
         return [usuario for usuario in self.usuarios
                 if consulta in usuario.nombre.casefold()
+                or consulta in usuario.nombre_visible.casefold()
                 or consulta in usuario.nombre_usuario.casefold()]
+
+    def actualizar_perfil(self, actor, propietario, nombre_visible, biografia, foto_perfil=None):
+        """Actualiza datos públicos solo cuando el propietario coincide con la cuenta."""
+        if actor is not propietario:
+            raise PermissionError("Solo puedes editar tu propio perfil.")
+        if self.usuarios_por_nombre.get(propietario.nombre_usuario) is not propietario:
+            raise PermissionError("Solo puedes editar tu propio perfil.")
+        nombre_visible = nombre_visible.strip()
+        if not nombre_visible:
+            raise ValueError("El nombre visible es obligatorio.")
+        if len(biografia) > 150:
+            raise ValueError("La biografía no puede superar los 150 caracteres.")
+        anteriores = (propietario.nombre_visible, propietario.biografia, propietario.foto_perfil)
+        propietario.nombre_visible = nombre_visible
+        propietario.biografia = biografia
+        if foto_perfil is not None:
+            propietario.foto_perfil = foto_perfil
+        try:
+            self._guardar()
+        except OSError:
+            propietario.nombre_visible, propietario.biografia, propietario.foto_perfil = anteriores
+            raise
 
     def _guardar(self):
         """Persiste la lista de usuarios."""
