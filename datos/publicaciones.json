@@ -133,7 +133,9 @@
         "comentarios": [],
         "ruta_imagen": "imagenes_publicaciones\\e0c8b8c7b3504c6697ec320037f5ba3d.jpg",
         "ruta_video": "",
-        "reacciones": {}
+        "reacciones": {
+            "Dylanbc": "Me gusta"
+        }
     },
     {
         "tipo": "repost",
@@ -155,8 +157,8 @@
     },
     {
         "tipo": "repost",
-        "original_id": 8,
         "nombre_usuario": "Dylanbc",
+        "original_id": 8,
         "fecha": "2026-11-15T11:43:28"
     }
 ]
