@@ -7,10 +7,67 @@ import unittest
 
 from gestores.gestor_usuarios import GestorUsuarios
 from gui.estilo import preparar
+from gui.estilo import aplicar_tema, _hover, _salir_hover, TEMAS
+from gui.avatar import foto_circular, dibujar_avatar
+from types import SimpleNamespace
+from PIL import Image, ImageTk
 from main import CampusConnectApp
 
 
 class PruebasTema(unittest.TestCase):
+    def test_avatares_transparentes_y_controles_en_ambos_temas(self):
+        raiz = tk.Tk()
+        self.addCleanup(raiz.destroy)
+        raiz.withdraw()
+        preparar(raiz)
+        contenedor = tk.Frame(raiz, background="#F3F4F6")
+        avatar = tk.Canvas(contenedor, width=48, height=48)
+        botones = []
+        for rol in ("actualizar", "icono", "reaccion"):
+            boton = tk.Button(contenedor, background="#FFFFFF", foreground="#1F2937")
+            boton._campus_rol = rol
+            if rol == "icono":
+                boton._campus_icono = "imagen"
+            botones.append(boton)
+        lateral = tk.Frame(raiz, background="#E4002B")
+        navegacion = tk.Button(lateral)
+        navegacion._campus_rol = "navegacion"
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, "avatar.png")
+            imagen = Image.new("RGBA", (80, 80), (40, 90, 120, 255))
+            imagen.putpixel((40, 40), (40, 90, 120, 0))
+            imagen.save(ruta)
+            foto = foto_circular(ruta, 80)
+            resultado = ImageTk.getimage(foto)
+            self.assertEqual(resultado.getpixel((0, 0))[3], 0)
+            self.assertLess(resultado.getpixel((40, 40))[3], 255)
+            self.assertTrue(any(0 < a < 255 for a in resultado.getchannel("A").tobytes()))
+            usuario = SimpleNamespace(foto_perfil=ruta, nombre_visible="Ana")
+            dibujar_avatar(avatar, usuario, carpeta, 48)
+            self.assertEqual(avatar._foto_perfil.width(), 48)
+            self.assertEqual([avatar.type(i) for i in avatar.find_all()], ["image"])
+            for modo in ("claro", "oscuro", "claro"):
+                aplicar_tema(raiz, modo)
+                self.assertEqual(avatar.cget("background"), contenedor.cget("background"))
+                self.assertEqual(int(avatar.cget("highlightthickness")), 0)
+                for boton in botones:
+                    self.assertEqual(boton.cget("background"), contenedor.cget("background"))
+                    _hover(boton)
+                    self.assertEqual(boton.cget("background"), TEMAS[modo]["NEUTRO_HOVER"])
+                    _salir_hover(boton)
+                    self.assertEqual(boton.cget("background"), contenedor.cget("background"))
+                icono = ImageTk.getimage(botones[1]._campus_imagen)
+                self.assertEqual(icono.getpixel((0, 0))[3], 0)
+                for boton in (navegacion, botones[2]):
+                    boton._campus_seleccionado = True
+                    aplicar_tema(boton, modo)
+                    fondo = boton.cget("background")
+                    _hover(boton)
+                    _salir_hover(boton)
+                    self.assertEqual(boton.cget("background"), fondo)
+                    self.assertEqual(boton.cget("activebackground"), fondo)
+                    boton._campus_seleccionado = False
+
     def test_cambio_en_sitio_navegacion_y_preferencia_persistida(self):
         raiz = tk.Tk()
         self.addCleanup(raiz.destroy)

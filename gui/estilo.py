@@ -123,7 +123,7 @@ def aplicar_tema(widget, modo):
     def pintar(actual, fondo_padre=None):
         if not hasattr(actual, "_campus_colores_base"):
             actual._campus_colores_base = {
-                nombre: _opcion(actual, nombre)
+                nombre: (str(_opcion(actual, nombre)) if _opcion(actual, nombre) is not None else None)
                 for nombre in ("background", "foreground", "highlightbackground", "highlightcolor",
                                "insertbackground", "selectbackground", "selectforeground",
                                "disabledforeground", "activebackground", "activeforeground")
@@ -172,7 +172,7 @@ def aplicar_tema(widget, modo):
 
         if getattr(actual, "_campus_rol", None) == "reaccion":
             seleccionado = getattr(actual, "_campus_seleccionado", False)
-            fondo = paleta["SELECCION"] if seleccionado else parent_bg
+            fondo = parent_bg
             frente = paleta["ACENTO"] if seleccionado else paleta["SECUNDARIO"]
         elif getattr(actual, "_campus_rol", None) == "navegacion":
             seleccionado = getattr(actual, "_campus_seleccionado", False)
@@ -181,9 +181,9 @@ def aplicar_tema(widget, modo):
         elif getattr(actual, "_campus_rol", None) == "tema":
             fondo = paleta["SUPERFICIE"]
             frente = "#FFFFFF" if modo == "oscuro" else paleta["TEXTO"]
-        elif getattr(actual, "_campus_rol", None) == "actualizar":
-            fondo = "#111318"
-            frente = "#FFFFFF"
+        elif getattr(actual, "_campus_rol", None) in ("actualizar", "icono", "avatar"):
+            fondo = parent_bg
+            frente = paleta["TEXTO"]
 
         opciones = {}
         if _opcion(actual, "background") is not None:
@@ -205,6 +205,20 @@ def aplicar_tema(widget, modo):
                                                 else paleta["NEUTRO_HOVER"])
         if _opcion(actual, "activeforeground") is not None:
             opciones["activeforeground"] = frente or paleta["TEXTO"]
+        if clase == "Button":
+            actual._campus_reposo = (fondo, frente)
+            if getattr(actual, "_campus_seleccionado", False):
+                opciones["activebackground"] = fondo
+            opciones["highlightthickness"] = 0
+        if getattr(actual, "_campus_icono", None):
+            from gui.iconos import crear_icono
+            actual._campus_imagen = crear_icono(actual._campus_icono, color=frente)
+            if actual._campus_imagen is not None:
+                opciones["image"] = actual._campus_imagen
+            if getattr(actual, "_campus_contador_neutro", False):
+                opciones["foreground"] = paleta["SECUNDARIO"]
+                opciones["activeforeground"] = paleta["SECUNDARIO"]
+                actual._campus_reposo = (fondo, paleta["SECUNDARIO"])
         try:
             if opciones:
                 actual.configure(**opciones)
@@ -263,8 +277,8 @@ def _hover(widget):
         widget.configure(background=paleta["SUPERFICIE"],
                          foreground="#FFFFFF" if modo == "oscuro" else paleta["TEXTO"])
         return
-    if getattr(widget, "_campus_rol", None) == "actualizar":
-        widget.configure(background="#343943", foreground="#FFFFFF")
+    if getattr(widget, "_campus_rol", None) in ("actualizar", "icono"):
+        widget.configure(background=paleta["NEUTRO_HOVER"], foreground=paleta["TEXTO"])
         return
     if getattr(widget, "_campus_rol", None) in ("reaccion", "navegacion") and getattr(
             widget, "_campus_seleccionado", False):
@@ -278,59 +292,9 @@ def _hover(widget):
 
 
 def _salir_hover(widget):
-    base = getattr(widget, "_campus_colores_base", {})
-    modo = getattr(widget.winfo_toplevel(), "_campus_modo_tema", "claro")
-    paleta = TEMAS[modo]
-    if getattr(widget, "_campus_rol", None) == "tema":
-        try:
-            widget.configure(background=paleta["SUPERFICIE"],
-                             foreground=("#FFFFFF" if modo == "oscuro" else paleta["TEXTO"]))
-        except tk.TclError:
-            pass
-        return
-    if getattr(widget, "_campus_rol", None) == "actualizar":
-        try:
-            widget.configure(background="#111318", foreground="#FFFFFF")
-        except tk.TclError:
-            pass
-        return
-    if getattr(widget, "_campus_rol", None) in ("reaccion", "navegacion"):
-        seleccionado = getattr(widget, "_campus_seleccionado", False)
-        rol = widget._campus_rol
-        fondo = (paleta["NAV_SELECCION"] if seleccionado and rol == "navegacion" else
-                 paleta["SELECCION"] if seleccionado else
-                 paleta["ACENTO"] if rol == "navegacion" else paleta["TARJETA"])
-        frente = paleta["ACENTO"] if seleccionado else (
-            "#FFFFFF" if rol == "navegacion" else paleta["SECUNDARIO"])
-        try:
-            widget.configure(background=fondo, foreground=frente)
-        except tk.TclError:
-            pass
-        return
-    orig = (base.get("background") or "").lower()
-    if orig in ("#e4002b", "#b80023"):
-        fondo = orig
-    elif orig in ("#e5e7eb", "#d1d5db"):
-        fondo = paleta["NEUTRO_HOVER"]
-    elif orig in ("#ffffff", "#fff", ""):
-        parent = widget.master
-        fondo = paleta["TARJETA"]
-        try:
-            while parent is not None:
-                if hasattr(parent, "_campus_colores_base"):
-                    pb = (parent._campus_colores_base.get("background") or "").lower()
-                    if pb in ("#f3f4f6", "#f5f5f5"):
-                        fondo = paleta["SUPERFICIE"]
-                        break
-                parent = parent.master
-        except (tk.TclError, AttributeError):
-            pass
-    else:
-        fondo = paleta["CAMPO"] if modo == "oscuro" and orig == "#fafafa" else orig
-    try:
-        widget.configure(background=fondo)
-    except tk.TclError:
-        pass
+    reposo = getattr(widget, '_campus_reposo', None)
+    if reposo:
+        widget.configure(background=reposo[0], foreground=reposo[1])
 
 
 def aplicar_tema_actual(widget):

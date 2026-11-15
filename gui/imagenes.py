@@ -14,12 +14,12 @@ FORMATOS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP", ".g
 LIMITE_BYTES = 5 * 1024 * 1024
 
 
-def validar_imagen(ruta):
+def validar_imagen(ruta, limite_bytes=LIMITE_BYTES):
     extension = os.path.splitext(ruta)[1].lower()
     if extension not in FORMATOS:
         raise ValueError("El formato debe ser JPG, JPEG, PNG, WEBP o GIF.")
-    if os.path.getsize(ruta) > LIMITE_BYTES:
-        raise ValueError("La imagen no puede superar 5 MB.")
+    if os.path.getsize(ruta) > limite_bytes:
+        raise ValueError("La imagen no puede superar {} MB.".format(limite_bytes // (1024 * 1024)))
     if Image is not None:
         with Image.open(ruta) as imagen:
             if imagen.format != FORMATOS[extension]:

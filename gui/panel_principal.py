@@ -10,6 +10,8 @@ from gui.lista_amigos import ListaAmigos
 from gui.perfil import Perfil
 from gui.avatar import dibujar_avatar
 from gui.scroll import enlazar_rueda_descendientes
+from gui.mensajes import Mensajes
+from gestores.gestor_mensajes import GestorMensajes
 
 
 class PanelPrincipal:
@@ -23,13 +25,24 @@ class PanelPrincipal:
         self.historial_perfiles = []
         lateral, central = estructura(contenedor)
         self.secciones = {nombre: tk.Frame(central, background="#FFFFFF")
-                          for nombre in ("Buscar usuarios", "Amigos", "muro", "Mi perfil")}
+                          for nombre in ("Buscar usuarios", "Amigos", "muro", "Mi perfil", "Mensajes")}
+        datos = os.path.dirname(aplicacion.gestor_usuarios.ruta_archivo)
+        self.gestor_mensajes = GestorMensajes(os.path.join(datos, "privado", "mensajes.json"),
+            aplicacion.gestor_usuarios, aplicacion.gestor_amistades,
+            lambda: usuario if getattr(aplicacion, "usuario_actual", usuario) is usuario else None)
+        self.mensajes = Mensajes(self.secciones["Mensajes"], self.gestor_mensajes, datos, self._contar_mensajes)
+        self.mensajes.pack(fill="both", expand=True)
+        self.mensajes.publicaciones = aplicacion.gestor_publicaciones
+        self.mensajes.aplicacion = aplicacion
+        self.mensajes.abrir_perfil = self.abrir_perfil
         self.muro = VentanaMuro(self.secciones["muro"], aplicacion, usuario)
         self.perfil = Perfil(self.secciones["Mi perfil"], aplicacion, usuario,
                              self.abrir_perfil, self.volver_perfil, self._actualizar_vistas_perfil)
         self.perfil.pack(fill="both", expand=True)
+        self.perfil.abrir_chat = self.abrir_chat
         self.muro.abrir_perfil = self.abrir_perfil
         self.muro.al_actualizar_vistas = self._actualizar_perfil_visible
+        self.perfil.winfo_toplevel().bind("<<PublicacionEliminada>>", self._publicacion_eliminada)
         contenedor = self.secciones["Buscar usuarios"]
         tk.Label(contenedor, text="Encuentra tu comunidad", background="#FFFFFF",
                  foreground="#1F2937", font=("Segoe UI", 23, "bold")).pack(anchor="w", pady=(12, 4))
@@ -80,10 +93,11 @@ class PanelPrincipal:
             os.path.dirname(self.aplicacion.gestor_usuarios.ruta_archivo),
         )
         self.lista_amigos.pack(fill="both", expand=True)
+        self.lista_amigos.abrir_chat = self.abrir_chat
         self._actualizar_amigos()
         self.botones_navegacion = {}
         self.seccion_activa = None
-        for nombre in ("Inicio", "Buscar usuarios", "Amigos", "Mi muro", "Mi perfil"):
+        for nombre in ("Inicio", "Buscar usuarios", "Amigos", "Mi muro", "Mi perfil", "Mensajes"):
             boton = tk.Button(lateral, text=nombre, anchor="w",
                               command=lambda seccion=nombre: self._mostrar_seccion(seccion))
             boton.pack(fill="x", pady=4)
@@ -97,6 +111,21 @@ class PanelPrincipal:
             boton.bind("<Enter>", lambda evento: evento.widget.configure(background="#B80023", foreground="#FFFFFF"))
             boton.bind("<Leave>", lambda evento, seccion=nombre: self._resaltar_navegacion())
         self._mostrar_seccion("Inicio")
+        try:
+            self._contar_mensajes(sum(c["no_leidos"] for c in self.gestor_mensajes.conversaciones()))
+        except (OSError, ValueError, PermissionError):
+            self.botones_navegacion["Mensajes"].configure(text="Mensajes (!)")
+
+    def _contar_mensajes(self, cantidad):
+        self.botones_navegacion["Mensajes"].configure(text="Mensajes ({})".format(cantidad))
+
+    def abrir_chat(self, nombre_usuario):
+        if self.mensajes.abrir(nombre_usuario):
+            self._mostrar_seccion("Mensajes")
+
+    def compartir_publicacion(self, identificador):
+        self._mostrar_seccion("Mensajes")
+        self.mensajes.elegir_destinatarios(identificador)
 
     def _resaltar_navegacion(self):
         for nombre, boton in self.botones_navegacion.items():
@@ -116,6 +145,9 @@ class PanelPrincipal:
         if nombre in ("Inicio", "Mi muro"):
             self.secciones["muro"].pack(fill="both", expand=True)
             self.muro.mostrar_feed(propias=nombre == "Mi muro", inicio=nombre == "Inicio")
+        elif nombre == "Mensajes":
+            self.secciones[nombre].pack(fill="both", expand=True)
+            self.mensajes.recargar()
         elif nombre == "Mi perfil":
             self.secciones[nombre].pack(fill="both", expand=True)
             if not conservar_historial:
@@ -181,7 +213,12 @@ class PanelPrincipal:
             tk.Label(fila, text=estado, background="#FFFFFF", foreground="#6B7280",
                      font=("Segoe UI", 10, "bold"), padx=10).grid(row=0, column=2, rowspan=2, padx=(8, 0))
         else:
-            boton = tk.Button(fila, text="+ Agregar", command=lambda persona=usuario: self._agregar_usuario(persona),
+            solicitud = self.aplicacion.gestor_amistades.estado_solicitud(
+                self.usuario.nombre_usuario, usuario.nombre_usuario)
+            boton = tk.Button(fila, text="Solicitud enviada" if solicitud == "enviada" else
+                              "Aceptar solicitud" if solicitud == "recibida" else "Enviar solicitud",
+                              state="disabled" if solicitud == "enviada" else "normal",
+                              command=lambda persona=usuario: self._agregar_usuario(persona),
                               background="#E4002B", foreground="#FFFFFF", activebackground="#B80023",
                               activeforeground="#FFFFFF", disabledforeground="#FFFFFF", relief="flat",
                               borderwidth=0, padx=13, pady=7, cursor="hand2", font=("Segoe UI", 9, "bold"))
@@ -193,7 +230,10 @@ class PanelPrincipal:
 
     def _agregar_usuario(self, amigo):
         try:
-            self.aplicacion.gestor_amistades.agregar_amistad(self.usuario.nombre_usuario, amigo.nombre_usuario)
+            gestor = self.aplicacion.gestor_amistades
+            accion = (gestor.aceptar_solicitud if gestor.estado_solicitud(
+                self.usuario.nombre_usuario, amigo.nombre_usuario) == "recibida" else gestor.agregar_amistad)
+            accion(self.usuario.nombre_usuario, amigo.nombre_usuario)
         except ValueError as error:
             messagebox.showerror("Amistades", str(error), parent=self.secciones["Buscar usuarios"])
             return
@@ -203,7 +243,9 @@ class PanelPrincipal:
             return
         self._actualizar_amigos()
         self._buscar()
-        self.estado_busqueda.configure(text="Ahora tú y @{} son amigos.".format(amigo.nombre_usuario))
+        self.muro._actualizar()
+        self.estado_busqueda.configure(text="Ahora son amigos." if amigo.nombre_usuario in
+            gestor.obtener_amistades(self.usuario.nombre_usuario) else "Solicitud enviada a @{}.".format(amigo.nombre_usuario))
 
     def _enlazar_scroll_busqueda(self, widget):
         widget.bind("<MouseWheel>", self._rueda_busqueda)
@@ -255,7 +297,20 @@ class PanelPrincipal:
         for nombre_usuario in amigos:
             amigo = self.aplicacion.gestor_usuarios.usuarios_por_nombre.get(nombre_usuario)
             tarjetas.append((amigo.nombre_visible if amigo else nombre_usuario, nombre_usuario))
-        self.lista_amigos.mostrar(tarjetas)
+        pendientes = [r["emisor"] for r in self.aplicacion.gestor_amistades.solicitudes
+                      if r["receptor"] == self.usuario.nombre_usuario]
+        self.lista_amigos.mostrar(tarjetas, pendientes, self._responder_solicitud)
+
+    def _responder_solicitud(self, emisor, aceptar):
+        gestor = self.aplicacion.gestor_amistades
+        try:
+            accion = gestor.aceptar_solicitud if aceptar else gestor.rechazar_solicitud
+            accion(self.usuario.nombre_usuario, emisor)
+        except (ValueError, OSError) as error:
+            messagebox.showerror("Solicitudes de amistad", str(error), parent=self.lista_amigos)
+            return
+        self._actualizar_vistas_perfil()
+        self._actualizar_perfil_visible()
 
     def _actualizar_perfil_visible(self):
         usuario = self.perfil.usuario
@@ -265,3 +320,8 @@ class PanelPrincipal:
         self._buscar()
         self._actualizar_amigos()
         self.muro._actualizar()
+
+    def _publicacion_eliminada(self, evento=None):
+        if self.perfil.winfo_exists():
+            self.muro._actualizar()
+            self._actualizar_perfil_visible()

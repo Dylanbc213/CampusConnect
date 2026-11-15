@@ -63,6 +63,63 @@ class PruebasPublicaciones(unittest.TestCase):
         self.assertGreater(segunda.identificador, primera.identificador)
         self.assertEqual(len(GestorPublicaciones(self.ruta).publicaciones), 2)
 
+    def test_eliminar_permisos_persistencia_y_fallo(self):
+        propia = self.gestor.crear_publicacion("ana", "Propia", "compartida.png")
+        otra = self.gestor.crear_publicacion("luis", "Otra", "compartida.png")
+        self.gestor.agregar_comentario(propia.identificador, "luis", "Respuesta")
+        self.gestor.establecer_reaccion(propia.identificador, "luis", "Me gusta")
+        with self.assertRaises(PermissionError):
+            self.gestor.eliminar_publicacion(propia.identificador, "luis")
+        with patch.object(self.gestor, "_guardar", side_effect=OSError("fallo")):
+            with self.assertRaises(OSError):
+                self.gestor.eliminar_publicacion(propia.identificador, "ana")
+        self.assertEqual(self.gestor.publicaciones, [propia, otra])
+        self.assertEqual(len(GestorPublicaciones(self.ruta).publicaciones), 2)
+        self.gestor.eliminar_publicacion(propia.identificador, "ana")
+        self.assertEqual([p.a_diccionario() for p in GestorPublicaciones(self.ruta).publicaciones],
+                         [otra.a_diccionario()])
+        with self.assertRaises(ValueError):
+            self.gestor.eliminar_publicacion(propia.identificador, "ana")
+
+    def test_cancelar_eliminacion(self):
+        from gui.lista_publicaciones import TarjetaPublicacion
+        tarjeta = MagicMock()
+        with patch("gui.lista_publicaciones.messagebox.askyesno", return_value=False):
+            TarjetaPublicacion._eliminar(tarjeta)
+        tarjeta.aplicacion.gestor_publicaciones.eliminar_publicacion.assert_not_called()
+        tarjeta.winfo_toplevel.assert_not_called()
+
+    def test_reposts_referencias_duplicados_y_persistencia(self):
+        original = self.gestor.crear_publicacion("ana", "Original")
+        with self.assertRaises(PermissionError):
+            self.gestor.repostear(original.identificador, "ana")
+        self.gestor.repostear(original.identificador, "luis")
+        with self.assertRaises(ValueError):
+            self.gestor.repostear(original.identificador, "luis")
+        recargado = GestorPublicaciones(self.ruta)
+        self.assertEqual(recargado.contar_reposts(original.identificador), 1)
+        vista = recargado.obtener_publicaciones_usuario("luis")[0]
+        self.assertIs(vista.original, recargado.publicaciones[0])
+        self.assertEqual(vista.reposteador, "luis")
+        self.amistades.agregar_amistad("maria", "luis")
+        self.amistades.aceptar_solicitud("luis", "maria")
+        self.assertEqual(recargado.obtener_publicaciones_inicio("maria", self.amistades)[0].reposteador, "luis")
+        with open(self.ruta, encoding="utf-8") as archivo:
+            registro = json.load(archivo)[-1]
+        self.assertEqual(set(registro), {"tipo", "original_id", "nombre_usuario", "fecha"})
+        recargado.deshacer_repost(original.identificador, "maria")
+        self.assertEqual(recargado.contar_reposts(original.identificador), 1)
+        recargado.deshacer_repost(original.identificador, "luis")
+        self.assertEqual(len(GestorPublicaciones(self.ruta).publicaciones), 1)
+        self.assertEqual(GestorPublicaciones(self.ruta).reposts, [])
+        recargado.repostear(original.identificador, "luis")
+        with patch.object(recargado, "_guardar", side_effect=OSError("fallo")):
+            with self.assertRaises(OSError):
+                recargado.eliminar_publicacion(original.identificador, "ana")
+        self.assertEqual(recargado.contar_reposts(original.identificador), 1)
+        recargado.eliminar_publicacion(original.identificador, "ana")
+        self.assertEqual(GestorPublicaciones(self.ruta).reposts, [])
+
     def test_consultas_propias_y_amigos(self):
         propia = self.gestor.crear_publicacion("ana", "Propia")
         amigo = self.gestor.crear_publicacion("luis", "De Luis")
@@ -70,6 +127,7 @@ class PruebasPublicaciones(unittest.TestCase):
         self.assertEqual(self.gestor.obtener_publicaciones_usuario("ana"), [propia])
         self.assertEqual(self.gestor.obtener_publicaciones_amigos("ana", self.amistades), [])
         self.amistades.agregar_amistad("ana", "luis")
+        self.amistades.aceptar_solicitud("luis", "ana")
         self.assertEqual(self.gestor.obtener_publicaciones_amigos("ana", self.amistades), [amigo])
         self.assertEqual(self.gestor.obtener_publicaciones_amigos("luis", self.amistades), [propia])
         recargado = GestorPublicaciones(self.ruta)
@@ -81,6 +139,7 @@ class PruebasPublicaciones(unittest.TestCase):
         amiga = self.gestor.crear_publicacion("luis", "De Luis")
         ajena = self.gestor.crear_publicacion("maria", "De María")
         self.amistades.agregar_amistad("ana", "luis")
+        self.amistades.aceptar_solicitud("luis", "ana")
         self.gestor.publicaciones.append(propia)
         feed = self.gestor.obtener_publicaciones_inicio("ana", self.amistades)
         self.assertEqual(feed, [amiga, propia])
@@ -119,6 +178,7 @@ class PruebasPublicaciones(unittest.TestCase):
             json.dump(registros, archivo, ensure_ascii=False)
         gestor = GestorPublicaciones(self.ruta)
         self.amistades.agregar_amistad("ana", "luis")
+        self.amistades.aceptar_solicitud("luis", "ana")
         with open(self.ruta, "rb") as archivo:
             original = archivo.read()
         self.assertEqual([p.identificador for p in gestor.obtener_publicaciones_inicio("ana", self.amistades)],
@@ -269,12 +329,14 @@ class PruebasPublicaciones(unittest.TestCase):
             self.assertEqual(self.gestor.publicaciones[0].nombre_usuario, "ana")
             self.assertEqual(muro.campo_contenido.valor, "")
             self.assertIn("Ana (@ana)", muro.muro_personal.valor)
-            self.assertIn(self.gestor.publicaciones[0].fecha, muro.muro_personal.valor)
+            from gui.fechas import fecha_publicacion
+            self.assertIn(fecha_publicacion(self.gestor.publicaciones[0].fecha), muro.muro_personal.valor)
             self.assertIn("Texto\ncon dos líneas", muro.muro_personal.valor)
             self.assertEqual(muro.muro_personal.opciones["state"], "disabled")
             self.gestor.crear_publicacion("luis", "Texto de amigo")
             self.gestor.crear_publicacion("maria", "Texto ajeno")
             self.amistades.agregar_amistad("ana", "luis")
+            self.amistades.aceptar_solicitud("luis", "ana")
             muro._actualizar()
             self.assertIn("Luis (@luis)", muro.muro_amigos.valor)
             self.assertIn("Texto de amigo", muro.muro_amigos.valor)

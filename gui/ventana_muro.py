@@ -7,6 +7,7 @@ from tkinter.scrolledtext import ScrolledText
 from gui.estilo import decorar
 from gui.lista_publicaciones import ListaPublicaciones
 from gui.avatar import dibujar_avatar
+from gui.fechas import fecha_publicacion
 from gui.imagenes import validar_imagen, cargar_vista_previa
 
 
@@ -31,7 +32,7 @@ class VentanaMuro:
             self.boton_agregar.pack(side="left")
             self.boton_actualizar = tk.Button(
                 self.barra_feed, text="⟳", command=self._actualizar_desde_json,
-                background="#111318", foreground="#FFFFFF", activebackground="#343943",
+                background=self.barra_feed.cget("background"), foreground="#1F2937", activebackground="#E5E7EB",
                 activeforeground="#FFFFFF", relief="flat", borderwidth=0, padx=6, pady=3,
                 width=2, height=1, cursor="hand2", font=("Segoe UI Symbol", 14, "bold"),
             )
@@ -46,6 +47,7 @@ class VentanaMuro:
             identidad.pack(fill="x", pady=(0, 8))
             avatar = tk.Canvas(identidad, width=42, height=42, background="#FFFFFF", highlightthickness=0)
             avatar.pack(side="left", padx=(0, 10))
+            self.avatar_publicador = avatar
             dibujar_avatar(avatar, usuario, os.path.dirname(aplicacion.gestor_usuarios.ruta_archivo), 42)
             self.nombre_publicador = tk.Label(
                 identidad, text="{}  (@{})".format(usuario.nombre_visible, usuario.nombre_usuario),
@@ -134,8 +136,8 @@ class VentanaMuro:
             self.compositor.pack_forget()
             self.boton_cancelar.configure(background="#E5E7EB", foreground="#1F2937",
                                           activebackground="#D1D5DB", activeforeground="#1F2937")
-            self.boton_actualizar.configure(background="#111318", foreground="#FFFFFF",
-                                            activebackground="#343943", activeforeground="#FFFFFF")
+            self.boton_actualizar.configure(background=self.barra_feed.cget("background"), foreground="#1F2937",
+                                            activebackground="#E5E7EB", activeforeground="#1F2937")
         self.campo_contenido.configure(font=("Segoe UI", 12), background="#F3F4F6", foreground="#1F2937",
                                       insertbackground="#1F2937", relief="solid", borderwidth=1,
                                       highlightthickness=1, highlightbackground="#9CA3AF",
@@ -343,6 +345,10 @@ class VentanaMuro:
 
     def _actualizar(self):
         gestor = self.aplicacion.gestor_publicaciones
+        if hasattr(self, "avatar_publicador"):
+            self.avatar_publicador.delete("all")
+            dibujar_avatar(self.avatar_publicador, self.usuario,
+                           os.path.dirname(self.aplicacion.gestor_usuarios.ruta_archivo), 42)
         if hasattr(self, "nombre_publicador"):
             self.nombre_publicador.configure(text="{}  (@{})".format(
                 self.usuario.nombre_visible, self.usuario.nombre_usuario,
@@ -382,7 +388,7 @@ class VentanaMuro:
                 muro.tag_bind(tag_autor, "<Leave>", lambda evento: evento.widget.configure(cursor=""))
                 tags += (tag_autor,)
             muro.insert(tk.END, nombre + "\n", tags)
-            muro.insert(tk.END, publicacion.fecha + "\n", ("tarjeta", "fecha"))
+            muro.insert(tk.END, fecha_publicacion(publicacion.fecha) + "\n", ("tarjeta", "fecha"))
             muro.insert(tk.END, publicacion.contenido + "\n", ("tarjeta", "contenido"))
             muro.insert(tk.END, "\n")
         muro.configure(state="disabled")
