@@ -171,6 +171,7 @@ class PruebasFaseUno(unittest.TestCase):
         usuarios.registrar_usuario("Ana Pérez", "ana", "clave")
         usuarios.registrar_usuario("Luis Díaz", "luis", "otra")
         amistades.agregar_amistad("ana", "luis")
+        amistades.aceptar_solicitud("luis", "ana")
         publicaciones.crear_publicacion("ana", "Hola campus")
 
         usuarios_recargados = GestorUsuarios(rutas["usuarios.json"])
@@ -312,6 +313,7 @@ class PruebasFaseUno(unittest.TestCase):
             usuarios.registrar_usuario(nombre, nombre, "clave")
         gestor = GestorAmistades(rutas["amistades.json"], usuarios)
         gestor.agregar_amistad("ana", "luis")
+        gestor.aceptar_solicitud("luis", "ana")
         for pareja in (("ana", "ana"), ("ana", "luis"), ("luis", "ana"), ("ana", "ausente")):
             with self.subTest(pareja=pareja), self.assertRaises(ValueError):
                 gestor.agregar_amistad(*pareja)
@@ -327,6 +329,7 @@ class PruebasFaseUno(unittest.TestCase):
             self.assertEqual(archivo.read(), contenido)
         self.assertEqual(gestor.obtener_amistades("maria"), [])
         gestor.agregar_amistad("ana", "maria")
+        gestor.aceptar_solicitud("maria", "ana")
         recargado = GestorAmistades(rutas["amistades.json"], usuarios)
         self.assertEqual(recargado.obtener_amistades("ana"), ["luis", "maria"])
         self.assertEqual(recargado.obtener_amistades("luis"), ["ana"])

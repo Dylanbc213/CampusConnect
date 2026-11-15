@@ -23,8 +23,8 @@
         "contrasena": "pbkdf2_sha256$600000$b8724df6096b1bac32d17feabbc51578$b52d4d114fe1305664427e799a1d6c89bd9e0835e4ab48324455b6835967faec",
         "fecha_registro": "2026-11-10T15:52:54",
         "nombre_visible": "Dylan Ballestero",
-        "biografia": "",
-        "foto_perfil": ""
+        "biografia": "Ing. Sistemas ",
+        "foto_perfil": "avatares/Dylanbc_99e3b0a4d13b4d6898e14a57c4f8288d.png"
     },
     {
         "nombre": "Gabriel Ballestero",

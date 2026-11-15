@@ -53,6 +53,10 @@ class PruebasNavegacion(unittest.TestCase):
             self.assertTrue(panel.tarjetas_resultados["luis"].bind("<MouseWheel>"))
             self.assertTrue(panel.canvas_resultados.cget("yscrollcommand"))
             panel.tarjetas_resultados["luis"].invoke()
+            self.assertEqual(amistades.obtener_amistades("ana"), [])
+            amistades.aceptar_solicitud("luis", "ana")
+            panel._actualizar_amigos()
+            panel._buscar()
             self.assertEqual(amistades.obtener_amistades("ana"), ["luis"])
             self.assertEqual(panel.contador_amigos.cget("text"), "1 amigo")
             tarjeta = next(widget for widget in panel.lista_resultados.winfo_children()
@@ -90,6 +94,7 @@ class PruebasNavegacion(unittest.TestCase):
             luis = usuarios.registrar_usuario("Luis", "luis", "clave")
             amistades = GestorAmistades(os.path.join(carpeta, "amistades.json"), usuarios)
             amistades.agregar_amistad("ana", "luis")
+            amistades.aceptar_solicitud("luis", "ana")
             publicaciones = GestorPublicaciones(os.path.join(carpeta, "publicaciones.json"))
             publicaciones.crear_publicacion("ana", "Publicación propia")
             app = SimpleNamespace(raiz=raiz, gestor_usuarios=usuarios, gestor_amistades=amistades,
@@ -148,11 +153,36 @@ class PruebasNavegacion(unittest.TestCase):
             with patch("gui.perfil.filedialog.askopenfilename", return_value=ruta):
                 perfil._elegir_foto()
             self.assertEqual(perfil.vista_foto_frame.winfo_manager(), "pack")
-            self.assertIsNotNone(perfil.vista_foto_imagen)
+            self.assertIsNotNone(perfil.vista_foto.original)
+            editor = perfil.vista_foto
+            self.assertTrue(editor.canvas.bind("<B1-Motion>"))
+            self.assertTrue(editor.canvas.bind("<MouseWheel>"))
+            self.assertFalse(perfil.bind("<MouseWheel>"))
+            editor.slider.set(2)
+            editor._iniciar_arrastre(SimpleNamespace(x=100, y=100))
+            editor._mover(SimpleNamespace(x=122, y=144))
+            self.assertLess(editor.cx, 50)
+            self.assertLess(editor.cy, 30)
+            editor._rueda(SimpleNamespace(delta=120))
+            self.assertAlmostEqual(editor.zoom.get(), 2.2)
+            fila = perfil.boton_guardar_foto.master
+            next(boton for boton in fila.winfo_children()
+                 if boton.cget("text") == "Restablecer").invoke()
+            self.assertEqual((editor.cx, editor.cy, editor.zoom.get()), (50, 30, 1))
+            editor.slider.set(2)
+            raiz.after(30, raiz.quit)
+            raiz.mainloop()
+            self.assertIsNotNone(editor._foto)
+            self.assertEqual(editor._foto.width(), editor.LADO)
+            esperado = editor.recortar()
             perfil.boton_guardar_foto.invoke()
             guardada = GestorUsuarios(os.path.join(carpeta, "usuarios.json")).usuarios_por_nombre["ana"]
             self.assertTrue(guardada.foto_perfil.startswith("avatares/ana_"))
             self.assertTrue(os.path.exists(os.path.join(carpeta, guardada.foto_perfil)))
+            from PIL import Image, ImageChops
+            with Image.open(os.path.join(carpeta, guardada.foto_perfil)) as foto:
+                self.assertEqual(foto.size, (512, 512))
+                self.assertIsNone(ImageChops.difference(esperado, foto).getbbox())
             self.assertEqual(perfil.foto_estado.cget("text"), os.path.basename(guardada.foto_perfil))
             foto_guardada = guardada.foto_perfil
             with patch("gui.perfil.filedialog.askopenfilename", return_value=ruta):
@@ -172,6 +202,7 @@ class PruebasNavegacion(unittest.TestCase):
             luis = usuarios.registrar_usuario("Luis", "luis", "clave")
             amistades = GestorAmistades(os.path.join(carpeta, "amistades.json"), usuarios)
             amistades.agregar_amistad("ana", "luis")
+            amistades.aceptar_solicitud("luis", "ana")
             publicaciones = GestorPublicaciones(os.path.join(carpeta, "publicaciones.json"))
             post = publicaciones.crear_publicacion("luis", "Publicación de Luis")
             publicaciones.agregar_comentario(post.identificador, "ana", "Comentario de Ana")
@@ -244,8 +275,10 @@ class PruebasNavegacion(unittest.TestCase):
             tarjeta._alternar()
             self.assertNotEqual(tarjeta.boton_enviar_respuesta.cget("image"), "")
             self.assertNotEqual(tarjeta.boton_imagen_respuesta.cget("image"), "")
-            self.assertEqual(tarjeta.boton_enviar_respuesta.cget("background"), "#111318")
-            self.assertEqual(tarjeta.boton_imagen_respuesta.cget("background"), "#111318")
+            self.assertEqual(tarjeta.boton_enviar_respuesta.cget("background"),
+                             tarjeta.boton_enviar_respuesta.master.cget("background"))
+            self.assertEqual(tarjeta.boton_imagen_respuesta.cget("background"),
+                             tarjeta.boton_imagen_respuesta.master.cget("background"))
             tarjeta.campo_comentario.insert(0, "Respuesta")
             self.assertTrue(tarjeta.campo_comentario.bind("<Return>"))
             tarjeta._comentar()
@@ -292,7 +325,8 @@ class PruebasNavegacion(unittest.TestCase):
             contenedor.pack(fill="both", expand=True)
             panel = PanelPrincipal(contenedor, app, ana)
             self.assertEqual(panel.muro.boton_actualizar.pack_info()["side"], "left")
-            self.assertEqual(panel.muro.boton_actualizar.cget("background"), "#111318")
+            self.assertEqual(panel.muro.boton_actualizar.cget("background"),
+                             panel.muro.boton_actualizar.master.cget("background"))
             muro = panel.muro
             self.assertEqual(muro.compositor.winfo_manager(), "")
             muro.boton_agregar.invoke()
@@ -322,7 +356,10 @@ class PruebasNavegacion(unittest.TestCase):
             self.assertEqual(tarjeta.comentarios_frame.winfo_manager(), "grid")
             tarjeta.campo_comentario.insert(0, "Respuesta desde la tarjeta")
             tarjeta._comentar()
-            self.assertEqual(tarjeta.boton_comentarios.winfo_manager(), "pack")
+            self.assertEqual(tarjeta.boton_comentarios.winfo_manager(), "")
+            self.assertEqual(tarjeta.boton_responder.winfo_manager(), "grid")
+            self.assertEqual(tarjeta.boton_responder.grid_info()["column"], 0)
+            self.assertEqual(tarjeta.boton_responder.grid_info()["sticky"], "w")
             recargado = GestorPublicaciones(publicaciones.ruta_archivo)
             self.assertEqual(recargado.publicaciones[0].ruta_imagen, post.ruta_imagen)
 
@@ -418,6 +455,7 @@ class PruebasNavegacion(unittest.TestCase):
             usuarios.registrar_usuario("Luis", "luis", "clave")
             amistades = GestorAmistades(os.path.join(carpeta, "amistades.json"), usuarios)
             amistades.agregar_amistad("ana", "luis")
+            amistades.aceptar_solicitud("luis", "ana")
             publicaciones = GestorPublicaciones(os.path.join(carpeta, "publicaciones.json"))
             publicaciones.crear_publicacion("luis", "Publicación de amigo")
             app = SimpleNamespace(raiz=raiz, gestor_usuarios=usuarios, gestor_amistades=amistades,

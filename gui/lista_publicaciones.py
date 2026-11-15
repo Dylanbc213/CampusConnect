@@ -11,6 +11,7 @@ from gui.avatar import dibujar_avatar
 from gui.scroll import enlazar_rueda_descendientes
 from gui.imagenes import cargar_vista_previa, validar_imagen
 from gui.iconos import crear_icono
+from gui.fechas import fecha_publicacion
 
 
 class ListaPublicaciones(tk.Frame):
@@ -87,9 +88,18 @@ class TarjetaPublicacion(tk.Frame):
                               font=("Segoe UI", 11, "bold"), anchor="w",
                               cursor="hand2" if autor and abrir_perfil else "")
         self.autor.grid(row=0, column=1, sticky="w")
-        self.fecha = tk.Label(self, text=publicacion.fecha, background=BLANCO,
+        self.fecha = tk.Label(self, text=fecha_publicacion(publicacion.fecha), background=BLANCO,
                               foreground="#6B7280", font=("Segoe UI", 9), anchor="w")
         self.fecha.grid(row=1, column=1, sticky="w")
+        self.menu_publicacion = tk.Menu(self, tearoff=False, background=BLANCO,
+                                        foreground=TEXTO, activebackground=ROJO,
+                                        activeforeground=BLANCO)
+        if usuario_actual.nombre_usuario == publicacion.nombre_usuario:
+            self.menu_publicacion.add_command(label="Eliminar publicación", command=self._eliminar)
+        self.boton_menu = tk.Button(self, text="...", command=self._abrir_menu,
+                                    background=BLANCO, foreground=TEXTO, relief="flat",
+                                    borderwidth=0, cursor="hand2", font=("Segoe UI", 12, "bold"))
+        self.boton_menu.grid(row=0, column=2, sticky="ne")
         if autor and abrir_perfil:
             for widget in (avatar, self.autor):
                 widget.bind("<Button-1>", lambda evento, persona=autor: abrir_perfil(persona))
@@ -115,25 +125,28 @@ class TarjetaPublicacion(tk.Frame):
                 )
                 self.aviso_imagen.grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 10))
         acciones = tk.Frame(self, background=BLANCO)
-        acciones.grid(row=4, column=0, columnspan=3, sticky="ew")
+        acciones.grid(row=4, column=1, columnspan=2, sticky="e", pady=(6, 0))
         self.boton_comentarios = tk.Button(
             acciones, text=self._texto_boton(), command=self._alternar,
             background=BLANCO, foreground=ROJO, activeforeground=ROJO,
             relief="flat", borderwidth=0, cursor="hand2", font=("Segoe UI", 10, "bold"),
         )
-        self.boton_comentarios.pack(side="left")
+        self.boton_comentarios._campus_icono = "responder"
+        self.boton_comentarios._campus_rol = "reaccion"
+        self.boton_comentarios.configure(compound="top")
         self.boton_responder = tk.Button(
-            acciones, text="↩ Responder", command=self._abrir_respuesta,
-            background=ROJO, foreground=BLANCO, activebackground="#B80023",
-            activeforeground=BLANCO, relief="flat", borderwidth=0,
+            self, text="", command=self._abrir_respuesta,
+            background=BLANCO, foreground="#6B7280", activebackground="#E5E7EB",
+            activeforeground=ROJO, relief="flat", borderwidth=0,
             padx=11, pady=5, cursor="hand2", font=("Segoe UI", 9, "bold"),
         )
-        self.boton_responder.pack(side="left", padx=(6, 0))
+        self.boton_responder.configure(compound="top")
+        self.boton_responder.grid(row=4, column=0, sticky="w", pady=(6, 0))
+        self.boton_responder._campus_icono = "responder"
+        self.boton_responder._campus_rol = "reaccion"
         self.botones_reacciones = {}
         self.etiquetas_reacciones = {
-            "Me gusta": "👍 Me gusta",
-            "Me divierte": "😂 Me divierte",
-            "No me gusta": "👎 No me gusta",
+            "Me gusta": "Me gusta",
         }
         for reaccion in reversed(tuple(self.etiquetas_reacciones)):
             boton = tk.Button(
@@ -142,19 +155,97 @@ class TarjetaPublicacion(tk.Frame):
                 relief="flat", borderwidth=0, padx=7, cursor="hand2",
                 font=("Segoe UI", 9, "bold"),
             )
-            boton.pack(side="right")
+            boton._campus_icono = "corazon" if reaccion == "Me gusta" else "sonrisa"
+            boton._campus_contador_neutro = True
+            boton.configure(compound="top")
+            boton.pack(side="left", padx=5, pady=5)
             self.botones_reacciones[reaccion] = boton
         self._actualizar_reacciones()
         self._actualizar_boton_respuestas()
         self.comentarios_frame = tk.Frame(self, background=BLANCO)
         self.comentarios_frame.columnconfigure(0, weight=1)
-        self.comentarios_frame.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+        self.comentarios_frame.grid(row=6, column=0, columnspan=3, sticky="ew", pady=(8, 0))
         self.comentarios_frame.grid_remove()
         self._dibujar_comentarios()
 
+        gestor = self.aplicacion.gestor_publicaciones
+        propio_repost = gestor.tiene_repost(publicacion.identificador, usuario_actual.nombre_usuario)
+        self.boton_repost = tk.Button(
+            acciones, text=str(gestor.contar_reposts(publicacion.identificador)),
+            compound="top", padx=9,
+            command=self._repostear, background=BLANCO, foreground=ROJO,
+            relief="flat", borderwidth=0, cursor="hand2",
+            state="disabled" if publicacion.nombre_usuario == usuario_actual.nombre_usuario else "normal")
+        self.boton_repost._campus_icono = "repost"
+        if publicacion.nombre_usuario != usuario_actual.nombre_usuario:
+            self.boton_repost.pack(side="left", padx=5, pady=5)
+        self.boton_repost._campus_rol = "reaccion"
+        self.boton_repost._campus_seleccionado = propio_repost
+        self.boton_repost._campus_contador_neutro = True
+        self.boton_compartir = tk.Button(acciones, text="", command=self._compartir,
+            background=BLANCO, foreground="#6B7280", relief="flat", borderwidth=0, padx=10, cursor="hand2")
+        self.boton_compartir._campus_icono = "enviar"
+        self.boton_compartir._campus_rol = "reaccion"
+        self.boton_compartir.pack(side="left", padx=5, pady=5)
+        reposteador = getattr(publicacion, "reposteador", None)
+        if reposteador:
+            # Reserva una fila sobre toda la tarjeta sin alterar su contenido.
+            for widget in self.grid_slaves():
+                widget.grid_configure(row=int(widget.grid_info()["row"]) + 1)
+            self.comentarios_frame.grid_configure(row=7)
+            self.comentarios_frame.grid_remove()
+            etiqueta = tk.Label(self, text="@{} reposteó".format(reposteador),
+                                background=BLANCO, foreground="#6B7280", cursor="hand2")
+            etiqueta.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+            persona = aplicacion.gestor_usuarios.usuarios_por_nombre.get(reposteador)
+            if persona and abrir_perfil:
+                etiqueta.bind("<Button-1>", lambda evento: abrir_perfil(persona))
+
+    def _repostear(self):
+        gestor = self.aplicacion.gestor_publicaciones
+        identificador = self.publicacion.identificador
+        usuario = self.usuario_actual.nombre_usuario
+        try:
+            if gestor.tiene_repost(identificador, usuario):
+                gestor.deshacer_repost(identificador, usuario)
+            else:
+                gestor.repostear(identificador, usuario)
+        except (ValueError, PermissionError, OSError) as error:
+            messagebox.showerror("Repost", str(error), parent=self)
+            return
+        self.winfo_toplevel().event_generate("<<PublicacionEliminada>>", when="tail")
+
+    def _compartir(self):
+        self.aplicacion.vista_instancia.compartir_publicacion(self.publicacion.identificador)
+
     def _texto_boton(self):
         cantidad = len(self.publicacion.comentarios)
-        return ("⌃ Ocultar respuestas" if self.expandida else "⌄ Ver respuestas") + " ({})".format(cantidad)
+        return str(cantidad)
+
+    def _abrir_menu(self):
+        if self.menu_publicacion.index("end") is None:
+            return
+        self.menu_publicacion.configure(background=self.cget("background"),
+                                        foreground=self.autor.cget("foreground"),
+                                        activebackground=ROJO, activeforeground=BLANCO)
+        try:
+            self.menu_publicacion.tk_popup(self.boton_menu.winfo_rootx(),
+                                           self.boton_menu.winfo_rooty() + self.boton_menu.winfo_height())
+        finally:
+            self.menu_publicacion.grab_release()
+
+    def _eliminar(self):
+        if not messagebox.askyesno("Eliminar publicación",
+                                  "¿Eliminar esta publicación y sus respuestas y reacciones?",
+                                  parent=self):
+            return
+        try:
+            self.aplicacion.gestor_publicaciones.eliminar_publicacion(
+                self.publicacion.identificador, self.usuario_actual.nombre_usuario)
+        except (ValueError, PermissionError, OSError) as error:
+            messagebox.showerror("Eliminar publicación", str(error), parent=self)
+            return
+        self.winfo_toplevel().event_generate("<<PublicacionEliminada>>", when="tail")
 
     def _actualizar_reacciones(self):
         activas = self.publicacion.reacciones
@@ -165,7 +256,7 @@ class TarjetaPublicacion(tk.Frame):
             boton._campus_rol = "reaccion"
             boton._campus_seleccionado = seleccionado
             boton.configure(
-                text="{} · {}".format(self.etiquetas_reacciones[reaccion], cantidad),
+                text="  {}".format(cantidad),
                 background="#FCE7EC" if seleccionado else BLANCO,
                 foreground=ROJO if seleccionado else "#6B7280",
             )
@@ -173,12 +264,8 @@ class TarjetaPublicacion(tk.Frame):
 
     def _actualizar_boton_respuestas(self):
         cantidad = len(self.publicacion.comentarios)
-        self.boton_comentarios.configure(text=self._texto_boton())
-        if cantidad:
-            if not self.boton_comentarios.winfo_manager():
-                self.boton_comentarios.pack(side="left", before=self.boton_responder)
-        else:
-            self.boton_comentarios.pack_forget()
+        self.boton_comentarios.pack_forget()
+        self.boton_responder.configure(text=str(cantidad) if cantidad else "")
 
     def _reaccionar(self, reaccion):
         try:
@@ -203,7 +290,7 @@ class TarjetaPublicacion(tk.Frame):
         self.expandida = not self.expandida
         if not self.expandida and self.responder_abierto:
             self.responder_abierto = False
-            self.boton_responder.configure(text="↩ Responder")
+            self.boton_responder.configure(text="")
         self._actualizar_boton_respuestas()
         if self.expandida or self.responder_abierto:
             self.comentarios_frame.grid()
@@ -216,7 +303,7 @@ class TarjetaPublicacion(tk.Frame):
         self.etiqueta_destinatario.configure(
             text="Respondiendo a @{}".format(self.publicacion.nombre_usuario))
         self.expandida = self.responder_abierto and bool(self.publicacion.comentarios)
-        self.boton_responder.configure(text="Cerrar" if self.responder_abierto else "↩ Responder")
+        self.boton_responder.configure(text="")
         self._actualizar_boton_respuestas()
         if self.expandida or self.responder_abierto:
             self.comentarios_frame.grid()
@@ -339,6 +426,8 @@ class TarjetaPublicacion(tk.Frame):
             padx=8, pady=5, cursor="hand2", font=("Segoe UI Symbol", 12),
         )
         self.boton_imagen_respuesta.pack(side="right", padx=(0, 5))
+        self.boton_imagen_respuesta._campus_icono = "imagen"
+        self.boton_imagen_respuesta._campus_rol = "icono"
         self.icono_enviar_respuesta = crear_icono("enviar")
         self.boton_enviar_respuesta = tk.Button(
             entrada, text="➤" if self.icono_enviar_respuesta is None else "",
@@ -348,6 +437,8 @@ class TarjetaPublicacion(tk.Frame):
             padx=8, pady=5, cursor="hand2", font=("Segoe UI Symbol", 12),
         )
         self.boton_enviar_respuesta.pack(side="right")
+        self.boton_enviar_respuesta._campus_icono = "enviar"
+        self.boton_enviar_respuesta._campus_rol = "icono"
         self.preview_respuesta_frame = tk.Frame(self.comentarios_frame, background=BLANCO)
         self.preview_respuesta_frame.pack(fill="x", padx=8, pady=(4, 0))
         self.preview_respuesta_frame.pack_forget()
@@ -361,7 +452,7 @@ class TarjetaPublicacion(tk.Frame):
     def _responder_a(self, comentario):
         self.parent_respuesta = comentario["id"]
         self.responder_abierto = True
-        self.boton_responder.configure(text="Cerrar")
+        self.boton_responder.configure(text="")
         self.etiqueta_destinatario.configure(text="Respondiendo a @{}".format(comentario["nombre_usuario"]))
         self.expandida = True
         self._actualizar_boton_respuestas()
@@ -461,7 +552,7 @@ class TarjetaPublicacion(tk.Frame):
         self.conversacion_id = None
         self.expandida = True
         self.responder_abierto = False
-        self.boton_responder.configure(text="↩ Responder")
+        self.boton_responder.configure(text="")
         self._actualizar_boton_respuestas()
         self._dibujar_comentarios()
         self.comentarios_frame.grid()

@@ -1,26 +1,5 @@
 [
     {
-        "identificador": 1,
-        "nombre_usuario": "Dylanbc",
-        "contenido": "keloque mis locos todo bien",
-        "fecha": "2026-11-10T16:02:32",
-        "comentarios": [
-            {
-                "id": 1,
-                "parent_id": 1,
-                "parent_type": "publicacion",
-                "nombre_usuario": "Cami_cv",
-                "fecha": "2026-11-14T16:10:09",
-                "contenido": "queeeee",
-                "ruta_imagen": ""
-            }
-        ],
-        "ruta_imagen": "",
-        "reacciones": {
-            "Cami_cv": "Me gusta"
-        }
-    },
-    {
         "identificador": 2,
         "nombre_usuario": "Cami_cv",
         "contenido": "holaaaaaa",
@@ -65,8 +44,20 @@
         "nombre_usuario": "Cami_cv",
         "contenido": "",
         "fecha": "2026-11-14T17:28:30",
-        "comentarios": [],
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 6,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Dylanbc",
+                "fecha": "2026-11-14T19:12:17",
+                "contenido": "quien es esa jajajjaja",
+                "ruta_imagen": ""
+            }
+        ],
         "ruta_imagen": "imagenes_publicaciones\\f7ad52d35cf444d9bca26e4dcf16559e.jpg",
-        "reacciones": {}
+        "reacciones": {
+            "Dylanbc": "Me gusta"
+        }
     }
 ]

@@ -65,19 +65,36 @@ class ListaAmigos(tk.Frame):
             unidades = -1 if evento.delta > 0 else 1
         return self._desplazar(unidades)
 
-    def mostrar(self, amigos):
+    def mostrar(self, amigos, solicitudes=(), al_responder=None):
         for tarjeta in self.tarjetas.winfo_children():
             tarjeta.destroy()
         self.contador.configure(text=str(len(amigos)))
-        if amigos:
+        if amigos or solicitudes:
             self.vacio.place_forget()
         else:
             self.vacio.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95)
+        for emisor in solicitudes:
+            fila = tk.Frame(self.tarjetas, background="#FFFFFF", padx=14, pady=12)
+            fila.pack(fill="x", padx=4, pady=6)
+            tk.Button(fila, text="@{} quiere ser tu amigo".format(emisor),
+                      command=lambda u=emisor: self.al_seleccionar(u),
+                      background="#FFFFFF", foreground="#1F2937", relief="flat",
+                      borderwidth=0, cursor="hand2").pack(anchor="w")
+            for texto, aceptar in (("Aceptar", True), ("Rechazar", False)):
+                tk.Button(fila, text=texto, command=lambda u=emisor, a=aceptar: al_responder(u, a),
+                          background="#E4002B" if aceptar else "#E5E7EB",
+                          foreground="#FFFFFF" if aceptar else "#1F2937", relief="flat",
+                          borderwidth=0, padx=12, pady=6, cursor="hand2").pack(side="left", padx=4)
+            enlazar_rueda_descendientes(fila, self._rueda)
         for nombre, usuario in amigos:
             tarjeta = tk.Frame(self.tarjetas, background="#FFFFFF", highlightbackground="#E5E7EB",
                                highlightthickness=1, padx=14, pady=14)
             tarjeta.pack(fill="x", padx=4, pady=6)
             tarjeta.columnconfigure(1, weight=1)
+            if hasattr(self, "abrir_chat"):
+                tk.Button(tarjeta, text="Mensaje", command=lambda u=usuario: self.abrir_chat(u),
+                          background="#E4002B", foreground="#FFFFFF", relief="flat",
+                          borderwidth=0, padx=10, pady=6, cursor="hand2").grid(row=0, column=2, rowspan=2)
             avatar = tk.Canvas(tarjeta, width=48, height=48, background="#FFFFFF", highlightthickness=0)
             avatar.grid(row=0, column=0, rowspan=2, padx=(0, 14))
             if self.al_seleccionar:

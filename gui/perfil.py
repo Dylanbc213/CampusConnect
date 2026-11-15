@@ -1,14 +1,14 @@
 """Vista de perfiles públicos y edición del perfil propio."""
 
 import os
-import shutil
 import tkinter as tk
 import uuid
 from tkinter import filedialog, messagebox
 
 from gui.estilo import BLANCO, GRIS, ROJO, TEXTO, aplicar_tema_actual
 from gui.lista_publicaciones import ListaPublicaciones
-from gui.avatar import dibujar_avatar, foto_circular
+from gui.avatar import dibujar_avatar
+from gui.editor_foto import EditorFoto
 from gui.imagenes import validar_imagen
 
 
@@ -64,6 +64,9 @@ class Perfil(tk.Frame):
         self.estado.pack(pady=3)
         self.accion_amistad = tk.Button(self.tarjeta, text="Agregar amigo", command=self._agregar_amigo)
         self.accion_amistad.pack(pady=4)
+        self.boton_mensaje = tk.Button(self.tarjeta, text="Mensaje", background=ROJO,
+                                      foreground=BLANCO, relief="flat", cursor="hand2",
+                                      command=lambda: self.abrir_chat(self.usuario.nombre_usuario))
         self.editor = tk.Frame(self.tarjeta, background=BLANCO)
         tk.Label(self.editor, text="Nombre visible", background=BLANCO).pack(anchor="w", pady=(10, 2))
         self.campo_nombre = tk.Entry(self.editor)
@@ -83,12 +86,14 @@ class Perfil(tk.Frame):
         self.boton_elegir_foto.pack(side="left", pady=8)
         self.foto_estado = tk.Label(self.editor, text="Sin foto", background=BLANCO, foreground="#6B7280")
         self.foto_estado.pack(side="left", padx=8)
-        self.vista_foto_frame = tk.Frame(self.editor, background=BLANCO)
-        self.vista_foto = tk.Canvas(self.vista_foto_frame, width=122, height=122,
-                                    background=BLANCO, highlightthickness=0)
+        self.vista_foto_frame = tk.Frame(self.tarjeta, background=BLANCO)
+        self.vista_foto = EditorFoto(self.vista_foto_frame)
         self.vista_foto.pack(pady=(8, 4))
         fila_foto = tk.Frame(self.vista_foto_frame, background=BLANCO)
         fila_foto.pack()
+        tk.Button(fila_foto, text="Restablecer", command=self.vista_foto.restablecer,
+                  background="#E5E7EB", foreground=TEXTO, relief="flat",
+                  padx=14, pady=8, cursor="hand2").pack(side="left", padx=4)
         self.boton_guardar_foto = tk.Button(
             fila_foto, text="Guardar foto", command=self._guardar_foto,
             background=ROJO, foreground=BLANCO, activebackground="#B80023",
@@ -102,7 +107,6 @@ class Perfil(tk.Frame):
             padx=14, pady=8, cursor="hand2",
         )
         self.boton_cancelar_foto.pack(side="left", padx=4)
-        self.vista_foto_imagen = None
         self.vista_foto_frame.pack_forget()
         acciones_editor = tk.Frame(self.editor, background=BLANCO)
         acciones_editor.pack(fill="x", pady=8)
@@ -126,9 +130,14 @@ class Perfil(tk.Frame):
         self.mostrar(self.propietario)
 
     def mostrar(self, usuario):
+        if self.foto_pendiente:
+            self._cancelar_foto()
         self.usuario = usuario
         propio = usuario is self.propietario
         amigos = self.aplicacion.gestor_amistades.obtener_amistades(self.propietario.nombre_usuario)
+        self.boton_mensaje.pack_forget()
+        if usuario.nombre_usuario in amigos and hasattr(self, "abrir_chat"):
+            self.boton_mensaje.pack(pady=4, before=self.estado_edicion)
         amigos_objetivo = self.aplicacion.gestor_amistades.obtener_amistades(usuario.nombre_usuario)
         self.nombre.configure(text="@" + usuario.nombre_usuario)
         self.usuario_label.configure(text="")
@@ -149,7 +158,12 @@ class Perfil(tk.Frame):
             if usuario.nombre_usuario in amigos:
                 self.accion_amistad.configure(text="Ya son amigos", state="disabled")
             else:
-                self.accion_amistad.configure(text="Agregar amigo", state="normal")
+                solicitud = self.aplicacion.gestor_amistades.estado_solicitud(
+                    self.propietario.nombre_usuario, usuario.nombre_usuario)
+                self.accion_amistad.configure(
+                    text="Solicitud enviada" if solicitud == "enviada" else
+                         "Aceptar solicitud" if solicitud == "recibida" else "Enviar solicitud",
+                    state="disabled" if solicitud == "enviada" else "normal")
             self.accion_amistad.pack(pady=4)
         self._mostrar_avatar(usuario)
         self.publicaciones.mostrar(posts, "Aún no hay publicaciones.")
@@ -161,6 +175,7 @@ class Perfil(tk.Frame):
         self.campo_bio.delete("1.0", tk.END)
         self.campo_bio.insert("1.0", self.propietario.biografia)
         self.foto_pendiente = None
+        self.vista_foto.limpiar()
         self.vista_foto_frame.pack_forget()
         self.foto_estado.configure(text=os.path.basename(self.ruta_foto) if self.ruta_foto else "Sin foto")
         self._contar_bio()
@@ -200,24 +215,22 @@ class Perfil(tk.Frame):
         origen = filedialog.askopenfilename(parent=self, filetypes=[("Imágenes", "*.jpg *.jpeg *.png *.webp *.gif")])
         if not origen:
             return
-        extension = os.path.splitext(origen)[1].lower()
         try:
             validar_imagen(origen)
+            self.vista_foto.cargar(origen)
             self.foto_pendiente = origen
             self.foto_estado.configure(text=os.path.basename(origen))
-            self.vista_foto.delete("all")
-            self.vista_foto_imagen = foto_circular(origen, 118)
-            if self.vista_foto_imagen:
-                self.vista_foto.create_image(61, 61, image=self.vista_foto_imagen)
-            else:
-                self.vista_foto.create_text(61, 61, text="Vista previa requiere Pillow", fill=ROJO)
-            self.vista_foto_frame.pack(fill="x", pady=(2, 8), before=self.contador_bio.master.winfo_children()[-1])
+            self.editor.pack_forget()
+            self.vista_foto_frame.pack(fill="x", pady=(2, 8), before=self.estado_edicion)
+            aplicar_tema_actual(self.vista_foto_frame)
         except (OSError, ValueError) as error:
             messagebox.showerror("Foto de perfil", str(error), parent=self)
 
     def _cancelar_foto(self):
         self.foto_pendiente = None
+        self.vista_foto.limpiar()
         self.vista_foto_frame.pack_forget()
+        self.editor.pack(fill="x", pady=8, before=self.estado_edicion)
         self.foto_estado.configure(text=os.path.basename(self.ruta_foto) if self.ruta_foto else "Sin foto")
 
     def _guardar_foto(self):
@@ -246,14 +259,13 @@ class Perfil(tk.Frame):
             self.al_actualizar()
 
     def _persistir_foto(self, nombre, biografia):
-        extension = os.path.splitext(self.foto_pendiente)[1].lower()
         carpeta = os.path.join(os.path.dirname(self.aplicacion.gestor_usuarios.ruta_archivo), "avatares")
         os.makedirs(carpeta, exist_ok=True)
-        archivo = "{}_{}{}".format(self.propietario.nombre_usuario, uuid.uuid4().hex, extension)
+        archivo = "{}_{}.png".format(self.propietario.nombre_usuario, uuid.uuid4().hex)
         destino = os.path.join(carpeta, archivo)
-        shutil.copyfile(self.foto_pendiente, destino)
         relativa = "avatares/" + archivo
         try:
+            self.vista_foto.recortar().save(destino, format="PNG")
             self.aplicacion.gestor_usuarios.actualizar_perfil(
                 self.propietario, self.propietario, nombre, biografia, relativa,
             )
@@ -262,8 +274,7 @@ class Perfil(tk.Frame):
                 os.remove(destino)
             raise
         self.ruta_foto = relativa
-        self.foto_pendiente = None
-        self.vista_foto_frame.pack_forget()
+        self._cancelar_foto()
         self.foto_estado.configure(text=os.path.basename(relativa))
         self._mostrar_avatar(self.propietario)
         return relativa
@@ -300,9 +311,15 @@ class Perfil(tk.Frame):
 
     def _agregar_amigo(self):
         try:
-            self.aplicacion.gestor_amistades.agregar_amistad(
+            gestor = self.aplicacion.gestor_amistades
+            accion = (gestor.aceptar_solicitud if gestor.estado_solicitud(
+                self.propietario.nombre_usuario, self.usuario.nombre_usuario) == "recibida"
+                else gestor.agregar_amistad)
+            accion(
                 self.propietario.nombre_usuario, self.usuario.nombre_usuario)
         except (ValueError, OSError) as error:
             messagebox.showerror("Amistades", str(error), parent=self)
             return
         self.mostrar(self.usuario)
+        if self.al_actualizar:
+            self.al_actualizar()

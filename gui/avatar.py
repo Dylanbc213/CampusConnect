@@ -22,7 +22,8 @@ def foto_circular(ruta, tamano):
         mascara = Image.new("L", (lado, lado), 0)
         from PIL import ImageDraw
         ImageDraw.Draw(mascara).ellipse((0, 0, lado - 1, lado - 1), fill=255)
-        imagen.putalpha(mascara)
+        from PIL import ImageChops
+        imagen.putalpha(ImageChops.multiply(imagen.getchannel("A"), mascara))
         imagen = imagen.resize((tamano, tamano), Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(imagen)
 
@@ -33,18 +34,19 @@ def ruta_foto(usuario, carpeta_datos):
 
 
 def dibujar_avatar(canvas, usuario, carpeta_datos, tamano):
-    margen = 1
-    canvas.create_oval(margen, margen, tamano - margen, tamano - margen,
-                       fill="#FCE7EC", outline="")
+    canvas._campus_rol = "avatar"
+    canvas.configure(background=canvas.master.cget("background"),
+                     borderwidth=0, highlightthickness=0, relief="flat")
     try:
         ruta = ruta_foto(usuario, carpeta_datos)
-        imagen = foto_circular(ruta, tamano - 2) if ruta and os.path.isfile(ruta) else None
+        imagen = foto_circular(ruta, tamano) if ruta and os.path.isfile(ruta) else None
         if imagen:
             canvas.create_image(tamano / 2, tamano / 2, image=imagen)
             canvas._foto_perfil = imagen
             return imagen
     except (OSError, tk.TclError, ValueError):
         pass
+    canvas.create_oval(0, 0, tamano, tamano, fill="#FCE7EC", outline="")
     iniciales = "".join(p[0] for p in usuario.nombre_visible.split()[:2]).upper() or "?"
     canvas.create_text(tamano / 2, tamano / 2, text=iniciales, fill="#E4002B",
                        font=("Segoe UI", max(9, tamano // 4), "bold"))
