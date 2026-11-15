@@ -3,6 +3,70 @@
         "identificador": 1,
         "nombre_usuario": "Dylanbc",
         "contenido": "keloque mis locos todo bien",
-        "fecha": "2026-11-10T16:02:32"
+        "fecha": "2026-11-10T16:02:32",
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 1,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Cami_cv",
+                "fecha": "2026-11-14T16:10:09",
+                "contenido": "queeeee",
+                "ruta_imagen": ""
+            }
+        ],
+        "ruta_imagen": "",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 2,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "holaaaaaa",
+        "fecha": "2026-11-14T15:48:19",
+        "comentarios": [],
+        "ruta_imagen": "",
+        "reacciones": {}
+    },
+    {
+        "identificador": 3,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "holaaa",
+        "fecha": "2026-11-14T15:49:55",
+        "comentarios": [],
+        "ruta_imagen": "",
+        "reacciones": {}
+    },
+    {
+        "identificador": 4,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "dhuhur",
+        "fecha": "2026-11-14T16:12:47",
+        "comentarios": [],
+        "ruta_imagen": "",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 5,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "",
+        "fecha": "2026-11-14T17:00:38",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\4957f95902124406a76c594b9141dffe.png",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 6,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "",
+        "fecha": "2026-11-14T17:28:30",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\f7ad52d35cf444d9bca26e4dcf16559e.jpg",
+        "reacciones": {}
     }
 ]

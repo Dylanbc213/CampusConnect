@@ -52,6 +52,29 @@ class PruebasAutenticacion(unittest.TestCase):
         self.assertEqual(recargado.iniciar_sesion("ana", "clave antigua").fecha_registro, "2020-01-01")
         self.assertIsNone(recargado.iniciar_sesion("ana", usuario.contrasena))
 
+    def test_login_abre_panel_una_vez_sin_confirmacion_y_mantiene_errores(self):
+        ana = self.gestor.registrar_usuario("Ana", "ana", "clave")
+        app = SimpleNamespace(gestor_usuarios=self.gestor, mostrar_vista=Mock())
+        login = VentanaLogin.__new__(VentanaLogin)
+        login._sesion_abierta = False
+        login.campo_usuario = Mock()
+        login.campo_contrasena = Mock()
+        login.campo_usuario.get.return_value = "ana"
+        login.campo_contrasena.get.return_value = "clave"
+        with patch("gui.ventana_login.messagebox.showinfo") as exito, \
+             patch("gui.ventana_login.messagebox.showerror") as error:
+            login._iniciar_sesion(app)
+            login._iniciar_sesion(app)
+            app.mostrar_vista.assert_called_once_with("panel", ana)
+            exito.assert_not_called()
+            error.assert_not_called()
+
+            login._sesion_abierta = False
+            login.campo_contrasena.get.return_value = "incorrecta"
+            login._iniciar_sesion(app)
+            error.assert_called_once()
+            app.mostrar_vista.assert_called_once_with("panel", ana)
+
     def test_formularios_confirmacion_visibilidad_y_enter(self):
         app = SimpleNamespace(raiz=Mock(), gestor_usuarios=self.gestor, mostrar_vista=Mock())
         with patch("tkinter.Label", WidgetSimulado), patch("tkinter.Entry", WidgetSimulado), \

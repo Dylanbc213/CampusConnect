@@ -1,9 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
+from gui.avatar import dibujar_avatar
+from gui.scroll import enlazar_rueda_descendientes
+from gui.estilo import aplicar_tema_actual
 
 
 class ListaAmigos(tk.Frame):
-    def __init__(self, padre):
+    def __init__(self, padre, al_seleccionar=None, obtener_usuario=None, carpeta_datos=None):
         super().__init__(padre, background="#FFFFFF")
         cabecera = tk.Frame(self, background="#FFFFFF")
         cabecera.pack(fill="x", pady=(8, 4))
@@ -16,6 +19,9 @@ class ListaAmigos(tk.Frame):
                  foreground="#6B7280", font=("Segoe UI", 11)).pack(fill="x", pady=(0, 20))
         self.zona = tk.Frame(self, background="#F3F4F6", padx=8, pady=8)
         self.zona.pack(fill="both", expand=True)
+        self.al_seleccionar = al_seleccionar
+        self.obtener_usuario = obtener_usuario
+        self.carpeta_datos = carpeta_datos or ""
         self.canvas = tk.Canvas(self.zona, background="#F3F4F6", highlightthickness=0, width=1)
         self.scroll = ttk.Scrollbar(self.zona, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
@@ -31,7 +37,7 @@ class ListaAmigos(tk.Frame):
         tk.Label(self.vacio, text="Aún no tienes amigos.\nBusca a tus compañeros y conecta con ellos.",
                  background="#F3F4F6", foreground="#6B7280", font=("Segoe UI", 11),
                  wraplength=270, justify="center").pack()
-        self._enlazar_scroll(self.canvas)
+        enlazar_rueda_descendientes(self.canvas, self._rueda)
 
     def _ajustar(self, evento):
         self.canvas.itemconfigure(self.ventana, width=evento.width)
@@ -51,7 +57,13 @@ class ListaAmigos(tk.Frame):
         return "break"
 
     def _rueda(self, evento):
-        return self._desplazar(-1 if evento.delta > 0 else 1)
+        if getattr(evento, "num", None) == 4:
+            unidades = -1
+        elif getattr(evento, "num", None) == 5:
+            unidades = 1
+        else:
+            unidades = -1 if evento.delta > 0 else 1
+        return self._desplazar(unidades)
 
     def mostrar(self, amigos):
         for tarjeta in self.tarjetas.winfo_children():
@@ -68,16 +80,25 @@ class ListaAmigos(tk.Frame):
             tarjeta.columnconfigure(1, weight=1)
             avatar = tk.Canvas(tarjeta, width=48, height=48, background="#FFFFFF", highlightthickness=0)
             avatar.grid(row=0, column=0, rowspan=2, padx=(0, 14))
-            avatar.create_oval(1, 1, 47, 47, fill="#FCE7EC", outline="")
-            iniciales = "".join(parte[0] for parte in nombre.split()[:2]).upper() or "?"
-            avatar.create_text(24, 24, text=iniciales, fill="#E4002B", font=("Segoe UI", 14, "bold"))
-            for fila, texto, color, fuente in (
-                (0, nombre, "#1F2937", ("Segoe UI", 12, "bold")),
-                (1, "@" + usuario, "#6B7280", ("Segoe UI", 10)),
-            ):
-                tk.Label(tarjeta, text=texto, background="#FFFFFF", foreground=color, font=fuente,
-                         anchor="w", justify="left", wraplength=max(100, self.canvas.winfo_width() - 110)
-                         ).grid(row=fila, column=1, sticky="ew", pady=2)
-            for widget in (tarjeta, *tarjeta.winfo_children()):
-                self._enlazar_scroll(widget)
+            if self.al_seleccionar:
+                avatar.configure(cursor="hand2")
+                avatar.bind("<Button-1>", lambda evento, user=usuario: self.al_seleccionar(user))
+            persona = self.obtener_usuario(usuario) if self.obtener_usuario else None
+            if persona:
+                dibujar_avatar(avatar, persona, self.carpeta_datos, 48)
+            else:
+                avatar.create_oval(1, 1, 47, 47, fill="#FCE7EC", outline="")
+                iniciales = "".join(parte[0] for parte in nombre.split()[:2]).upper() or "?"
+                avatar.create_text(24, 24, text=iniciales, fill="#E4002B", font=("Segoe UI", 14, "bold"))
+            tk.Label(tarjeta, text="@" + usuario, background="#FFFFFF", foreground="#1F2937",
+                     font=("Segoe UI", 12, "bold"), anchor="w", justify="left",
+                     wraplength=max(100, self.canvas.winfo_width() - 110)
+                     ).grid(row=0, column=1, rowspan=2, sticky="ew", pady=2)
+            if self.al_seleccionar:
+                for widget in tarjeta.winfo_children():
+                    if isinstance(widget, tk.Label):
+                        widget.configure(cursor="hand2")
+                        widget.bind("<Button-1>", lambda evento, user=usuario: self.al_seleccionar(user))
+            enlazar_rueda_descendientes(tarjeta, self._rueda)
+        aplicar_tema_actual(self)
         self.canvas.yview_moveto(0)

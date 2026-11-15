@@ -67,3 +67,276 @@ def encabezado(contenedor, titulo):
     for widget in contenedor.winfo_children():
         if widget.winfo_class() == "Label" and widget.cget("text") == titulo:
             widget.configure(font=("Segoe UI", 22, "bold"), foreground=TEXTO)
+
+
+TEMAS = {
+    "claro": {
+        "FONDO": "#FFFFFF", "TARJETA": "#FFFFFF", "SUPERFICIE": "#F3F4F6",
+        "CAMPO": "#FAFAFA", "TEXTO": "#1F2937", "SECUNDARIO": "#6B7280",
+        "BORDE": "#E5E7EB", "ACENTO": "#E4002B", "ROJO_HOVER": "#B80023",
+        "NEUTRO_HOVER": "#E5E7EB", "SELECCION": "#FCE7EC", "ERROR": "#B42318",
+        "NAV_SELECCION": "#FFFFFF", "EXITO": "#24663B",
+    },
+    "oscuro": {
+        "FONDO": "#111318", "TARJETA": "#1E2128", "SUPERFICIE": "#1E2128",
+        "CAMPO": "#171A20", "TEXTO": "#F9FAFB", "SECUNDARIO": "#AEB4C0",
+        "BORDE": "#343943", "ACENTO": "#E4002B", "ROJO_HOVER": "#B80023",
+        "NEUTRO_HOVER": "#343943", "SELECCION": "#4A1825", "ERROR": "#FF8A8A",
+        "NAV_SELECCION": "#343943", "EXITO": "#7BD99B",
+    },
+}
+
+
+def _opcion(widget, nombre):
+    try:
+        return widget.cget(nombre)
+    except (tk.TclError, TypeError):
+        return None
+
+
+def _es_tarjeta(widget, originales):
+    borde = (originales.get("highlightbackground") or "").lower()
+    grosor = _opcion(widget, "highlightthickness")
+    try:
+        return int(grosor) > 0 and borde in ("#e5e7eb", "#d1d5db")
+    except (TypeError, ValueError):
+        return False
+
+
+def aplicar_tema(widget, modo):
+    """Pinta en sitio un ?rbol Tk completo, conservando sus valores base."""
+    modo = modo if modo in TEMAS else "claro"
+    paleta = TEMAS[modo]
+    try:
+        raiz = widget.winfo_toplevel()
+        raiz._campus_modo_tema = modo
+    except (tk.TclError, AttributeError):
+        raiz = None
+
+    fondo_inicial = None
+    if widget is not raiz:
+        try:
+            fondo_inicial = widget.master.cget("background")
+        except (tk.TclError, AttributeError):
+            pass
+
+    def pintar(actual, fondo_padre=None):
+        if not hasattr(actual, "_campus_colores_base"):
+            actual._campus_colores_base = {
+                nombre: _opcion(actual, nombre)
+                for nombre in ("background", "foreground", "highlightbackground", "highlightcolor",
+                               "insertbackground", "selectbackground", "selectforeground",
+                               "disabledforeground", "activebackground", "activeforeground")
+            }
+        base = actual._campus_colores_base
+        clase = actual.winfo_class()
+        fondo_base = (base.get("background") or "").lower()
+        frente_base = (base.get("foreground") or "").lower()
+        parent_bg = fondo_padre or paleta["FONDO"]
+
+        if clase in ("Tk", "Toplevel"):
+            fondo = paleta["FONDO"]
+        elif clase in ("Entry", "Text", "Listbox"):
+            fondo = (paleta["CAMPO"] if modo == "oscuro" else
+                     ("#FAFAFA" if fondo_base == "#fafafa" else paleta["SUPERFICIE"]))
+        elif fondo_base in ("#f3f4f6", "#f5f5f5"):
+            fondo = paleta["SUPERFICIE"]
+        elif fondo_base == "#fafafa":
+            fondo = paleta["CAMPO"]
+        elif fondo_base in ("#e5e7eb", "#d1d5db"):
+            fondo = paleta["NEUTRO_HOVER"] if clase == "Button" else paleta["SUPERFICIE"]
+        elif fondo_base == "#fce7ec":
+            fondo = paleta["SELECCION"]
+        elif fondo_base in ("#e4002b", "#b80023"):
+            fondo = fondo_base
+        elif fondo_base in ("#ffffff", "#fff", ""):
+            fondo = paleta["TARJETA"] if _es_tarjeta(actual, base) else parent_bg
+        else:
+            fondo = base.get("background") or parent_bg
+
+        if clase == "Button" and fondo_base in ("#ffffff", "#fff"):
+            fondo = paleta["TARJETA"] if _es_tarjeta(actual, base) else parent_bg
+        if frente_base in ("#1f2937", "#111827", "#000000", "#000"):
+            frente = paleta["TEXTO"]
+        elif frente_base in ("#6b7280", "#555555", "#374151"):
+            frente = paleta["SECUNDARIO"]
+        elif frente_base == "#b42318":
+            frente = paleta["ERROR"]
+        elif frente_base == "#24663b":
+            frente = paleta["EXITO"]
+        elif frente_base in ("#ffffff", "#fff"):
+            frente = ("#FFFFFF" if fondo_base in ("#e4002b", "#b80023")
+                      else paleta["TEXTO"])
+        else:
+            frente = base.get("foreground")
+
+        if getattr(actual, "_campus_rol", None) == "reaccion":
+            seleccionado = getattr(actual, "_campus_seleccionado", False)
+            fondo = paleta["SELECCION"] if seleccionado else parent_bg
+            frente = paleta["ACENTO"] if seleccionado else paleta["SECUNDARIO"]
+        elif getattr(actual, "_campus_rol", None) == "navegacion":
+            seleccionado = getattr(actual, "_campus_seleccionado", False)
+            fondo = (paleta["NAV_SELECCION"] if seleccionado else paleta["ACENTO"])
+            frente = paleta["ACENTO"] if seleccionado else "#FFFFFF"
+        elif getattr(actual, "_campus_rol", None) == "tema":
+            fondo = paleta["SUPERFICIE"]
+            frente = "#FFFFFF" if modo == "oscuro" else paleta["TEXTO"]
+        elif getattr(actual, "_campus_rol", None) == "actualizar":
+            fondo = "#111318"
+            frente = "#FFFFFF"
+
+        opciones = {}
+        if _opcion(actual, "background") is not None:
+            opciones["background"] = fondo
+        if _opcion(actual, "foreground") is not None and frente:
+            opciones["foreground"] = frente
+        if _opcion(actual, "highlightbackground") is not None:
+            opciones["highlightbackground"] = paleta["BORDE"]
+        if _opcion(actual, "highlightcolor") is not None:
+            opciones["highlightcolor"] = paleta["ACENTO"]
+        if _opcion(actual, "insertbackground") is not None:
+            opciones["insertbackground"] = paleta["TEXTO"]
+        if _opcion(actual, "selectbackground") is not None:
+            opciones["selectbackground"] = paleta["ACENTO"]
+        if _opcion(actual, "selectforeground") is not None:
+            opciones["selectforeground"] = "#FFFFFF"
+        if _opcion(actual, "activebackground") is not None:
+            opciones["activebackground"] = (paleta["ROJO_HOVER"] if fondo_base == "#e4002b"
+                                                else paleta["NEUTRO_HOVER"])
+        if _opcion(actual, "activeforeground") is not None:
+            opciones["activeforeground"] = frente or paleta["TEXTO"]
+        try:
+            if opciones:
+                actual.configure(**opciones)
+        except tk.TclError:
+            pass
+
+        if clase == "Button":
+            actual.bind("<Enter>", lambda evento: _hover(evento.widget), add="")
+            actual.bind("<Leave>", lambda evento: _salir_hover(evento.widget), add="")
+        if clase == "Text":
+            try:
+                for etiqueta in actual.tag_names():
+                    base_tag = getattr(actual, "_campus_tags_base", {})
+                    if etiqueta not in base_tag:
+                        base_tag[etiqueta] = {
+                            clave: actual.tag_cget(etiqueta, clave)
+                            for clave in ("background", "foreground")
+                        }
+                    actual._campus_tags_base = base_tag
+                    fondo_tag = base_tag[etiqueta]["background"]
+                    frente_tag = base_tag[etiqueta]["foreground"]
+                    if fondo_tag:
+                        actual.tag_configure(etiqueta, background=(paleta["SUPERFICIE"]
+                                           if fondo_tag.lower() in ("#f3f4f6", "#f5f5f5")
+                                           else fondo if fondo_tag.lower() in ("#ffffff", "#fff") else fondo_tag))
+                    if frente_tag:
+                        actual.tag_configure(etiqueta, foreground=(paleta["TEXTO"]
+                                           if frente_tag.lower() in ("#1f2937", "#000000") else frente_tag))
+            except tk.TclError:
+                pass
+
+        bg_hijo = fondo if clase in ("Frame", "Tk", "Toplevel", "Canvas", "Labelframe") else parent_bg
+        try:
+            hijos = actual.winfo_children()
+        except tk.TclError:
+            hijos = []
+        for hijo in hijos:
+            pintar(hijo, bg_hijo)
+
+    pintar(widget, fondo_inicial)
+    try:
+        from tkinter import ttk
+        estilo = ttk.Style(raiz or widget)
+        estilo.configure("TScrollbar", background=paleta["SUPERFICIE"],
+                         troughcolor=paleta["FONDO"], bordercolor=paleta["BORDE"],
+                         arrowcolor=paleta["SECUNDARIO"])
+    except tk.TclError:
+        pass
+
+
+def _hover(widget):
+    base = getattr(widget, "_campus_colores_base", {})
+    modo = getattr(widget.winfo_toplevel(), "_campus_modo_tema", "claro")
+    paleta = TEMAS[modo]
+    if getattr(widget, "_campus_rol", None) == "tema":
+        widget.configure(background=paleta["SUPERFICIE"],
+                         foreground="#FFFFFF" if modo == "oscuro" else paleta["TEXTO"])
+        return
+    if getattr(widget, "_campus_rol", None) == "actualizar":
+        widget.configure(background="#343943", foreground="#FFFFFF")
+        return
+    if getattr(widget, "_campus_rol", None) in ("reaccion", "navegacion") and getattr(
+            widget, "_campus_seleccionado", False):
+        return
+    fondo = (paleta["ROJO_HOVER"] if (base.get("background") or "").lower() == "#e4002b"
+             else paleta["NEUTRO_HOVER"])
+    try:
+        widget.configure(background=fondo)
+    except tk.TclError:
+        pass
+
+
+def _salir_hover(widget):
+    base = getattr(widget, "_campus_colores_base", {})
+    modo = getattr(widget.winfo_toplevel(), "_campus_modo_tema", "claro")
+    paleta = TEMAS[modo]
+    if getattr(widget, "_campus_rol", None) == "tema":
+        try:
+            widget.configure(background=paleta["SUPERFICIE"],
+                             foreground=("#FFFFFF" if modo == "oscuro" else paleta["TEXTO"]))
+        except tk.TclError:
+            pass
+        return
+    if getattr(widget, "_campus_rol", None) == "actualizar":
+        try:
+            widget.configure(background="#111318", foreground="#FFFFFF")
+        except tk.TclError:
+            pass
+        return
+    if getattr(widget, "_campus_rol", None) in ("reaccion", "navegacion"):
+        seleccionado = getattr(widget, "_campus_seleccionado", False)
+        rol = widget._campus_rol
+        fondo = (paleta["NAV_SELECCION"] if seleccionado and rol == "navegacion" else
+                 paleta["SELECCION"] if seleccionado else
+                 paleta["ACENTO"] if rol == "navegacion" else paleta["TARJETA"])
+        frente = paleta["ACENTO"] if seleccionado else (
+            "#FFFFFF" if rol == "navegacion" else paleta["SECUNDARIO"])
+        try:
+            widget.configure(background=fondo, foreground=frente)
+        except tk.TclError:
+            pass
+        return
+    orig = (base.get("background") or "").lower()
+    if orig in ("#e4002b", "#b80023"):
+        fondo = orig
+    elif orig in ("#e5e7eb", "#d1d5db"):
+        fondo = paleta["NEUTRO_HOVER"]
+    elif orig in ("#ffffff", "#fff", ""):
+        parent = widget.master
+        fondo = paleta["TARJETA"]
+        try:
+            while parent is not None:
+                if hasattr(parent, "_campus_colores_base"):
+                    pb = (parent._campus_colores_base.get("background") or "").lower()
+                    if pb in ("#f3f4f6", "#f5f5f5"):
+                        fondo = paleta["SUPERFICIE"]
+                        break
+                parent = parent.master
+        except (tk.TclError, AttributeError):
+            pass
+    else:
+        fondo = paleta["CAMPO"] if modo == "oscuro" and orig == "#fafafa" else orig
+    try:
+        widget.configure(background=fondo)
+    except tk.TclError:
+        pass
+
+
+def aplicar_tema_actual(widget):
+    """Aplica el tema activo de su ventana a un sub?rbol reci?n creado."""
+    try:
+        raiz = widget.winfo_toplevel()
+        aplicar_tema(widget, getattr(raiz, "_campus_modo_tema", "claro"))
+    except tk.TclError:
+        pass

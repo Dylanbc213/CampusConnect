@@ -5,12 +5,13 @@ import tkinter as tk
 
 from gestores.gestor_amistades import GestorAmistades
 from gestores.gestor_publicaciones import GestorPublicaciones
+from gestores.gestor_configuracion import GestorConfiguracion
 from gestores.gestor_usuarios import GestorUsuarios
 from gui.panel_principal import PanelPrincipal
 from gui.ventana_inicio import VentanaInicio
 from gui.ventana_login import VentanaLogin
 from gui.ventana_registro import VentanaRegistro
-from gui.estilo import preparar
+from gui.estilo import aplicar_tema, preparar
 
 
 class CampusConnectApp:
@@ -21,6 +22,20 @@ class CampusConnectApp:
         self.raiz = raiz
         self.raiz.title("CampusConnect")
         preparar(self.raiz)
+        self.gestor_configuracion = GestorConfiguracion(
+            os.path.join(carpeta_datos, "configuracion.json")
+        )
+        self.modo_tema = self.gestor_configuracion.tema
+        self.boton_tema = tk.Button(
+            self.raiz, text="", command=self.alternar_tema,
+            background="#F3F4F6", foreground="#1F2937", activebackground="#E5E7EB",
+            relief="flat", borderwidth=0, highlightthickness=1,
+            highlightbackground="#E5E7EB", highlightcolor="#E4002B",
+            padx=5, pady=0, width=2, height=1,
+            cursor="hand2", font=("Segoe UI Symbol", 12),
+        )
+        self.boton_tema._campus_rol = "tema"
+        self.boton_tema.place(relx=1.0, x=-8, y=4, anchor="ne")
         self.gestor_usuarios = GestorUsuarios(os.path.join(carpeta_datos, "usuarios.json"))
         self.gestor_amistades = GestorAmistades(
             os.path.join(carpeta_datos, "amistades.json"),
@@ -29,9 +44,12 @@ class CampusConnectApp:
         self.gestor_publicaciones = GestorPublicaciones(
             os.path.join(carpeta_datos, "publicaciones.json")
         )
-        self.contenedor = tk.Frame(raiz, padx=20, pady=20)
+        self.contenedor = tk.Frame(raiz, padx=20, pady=0)
         self.contenedor.pack(fill="both", expand=True)
+        self._actualizar_boton_tema()
+        aplicar_tema(self.raiz, self.modo_tema)
         self.vista_actual = None
+        self.vista_instancia = None
         self.usuario_actual = None
         self.mostrar_vista("inicio")
 
@@ -56,9 +74,31 @@ class CampusConnectApp:
         self.vista_actual = nombre_vista
         self.usuario_actual = usuario if nombre_vista == "panel" else None
         if nombre_vista == "panel":
-            clase_vista(self.contenedor, self, usuario)
+            self.vista_instancia = clase_vista(self.contenedor, self, usuario)
         else:
-            clase_vista(self.contenedor, self)
+            self.vista_instancia = clase_vista(self.contenedor, self)
+        aplicar_tema(self.raiz, self.modo_tema)
+        self.boton_tema.lift()
+
+    def _actualizar_boton_tema(self):
+        if hasattr(self, "boton_tema"):
+            if self.modo_tema == "oscuro":
+                self.boton_tema.configure(text="☀")
+            else:
+                self.boton_tema.configure(text="☾")
+
+    def alternar_tema(self):
+        nuevo = "oscuro" if self.modo_tema == "claro" else "claro"
+        try:
+            self.gestor_configuracion.establecer_tema(nuevo)
+        except OSError:
+            from tkinter import messagebox
+            messagebox.showerror("Tema", "No se pudo guardar la preferencia de tema.", parent=self.raiz)
+            return
+        self.modo_tema = nuevo
+        self._actualizar_boton_tema()
+        aplicar_tema(self.raiz, self.modo_tema)
+        self.boton_tema.lift()
 
 
 def main():

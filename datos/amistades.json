@@ -2,15 +2,23 @@
     "Dylanbc": [
         "Jose1",
         "jose2",
-        "Gabriel222"
+        "Gabriel222",
+        "Cami_cv"
     ],
     "Jose1": [
-        "Dylanbc"
+        "Dylanbc",
+        "Cami_cv"
     ],
     "jose2": [
         "Dylanbc"
     ],
     "Gabriel222": [
-        "Dylanbc"
+        "Dylanbc",
+        "Cami_cv"
+    ],
+    "Cami_cv": [
+        "Dylanbc",
+        "Gabriel222",
+        "Jose1"
     ]
 }

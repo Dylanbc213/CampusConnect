@@ -1,4 +1,5 @@
 import os
+import json
 import tempfile
 import unittest
 from datetime import datetime
@@ -38,6 +39,7 @@ class PruebasPublicaciones(unittest.TestCase):
     def setUp(self):
         temporal = tempfile.TemporaryDirectory()
         self.addCleanup(temporal.cleanup)
+        self.carpeta_temporal = temporal.name
         self.ruta = os.path.join(temporal.name, "publicaciones.json")
         self.usuarios = GestorUsuarios(os.path.join(temporal.name, "usuarios.json"))
         for nombre in ("ana", "luis", "maria"):
@@ -73,6 +75,143 @@ class PruebasPublicaciones(unittest.TestCase):
         recargado = GestorPublicaciones(self.ruta)
         amistades = GestorAmistades(self.amistades.ruta_archivo, self.usuarios)
         self.assertEqual([p.contenido for p in recargado.obtener_publicaciones_amigos("ana", amistades)], ["De Luis"])
+
+    def test_feed_inicio_sin_duplicados_y_comentarios_persistentes(self):
+        propia = self.gestor.crear_publicacion("ana", "Propia")
+        amiga = self.gestor.crear_publicacion("luis", "De Luis")
+        ajena = self.gestor.crear_publicacion("maria", "De María")
+        self.amistades.agregar_amistad("ana", "luis")
+        self.gestor.publicaciones.append(propia)
+        feed = self.gestor.obtener_publicaciones_inicio("ana", self.amistades)
+        self.assertEqual(feed, [amiga, propia])
+        self.assertNotIn(ajena, feed)
+        with self.assertRaises(ValueError):
+            self.gestor.agregar_comentario(propia.identificador, "ana", "  \n")
+        comentario = self.gestor.agregar_comentario(propia.identificador, "ana", "  Estoy de acuerdo  ")
+        self.assertEqual(comentario["nombre_usuario"], "ana")
+        self.assertEqual(comentario["contenido"], "Estoy de acuerdo")
+        recargado = GestorPublicaciones(self.ruta)
+        self.assertEqual(recargado.publicaciones[0].comentarios, [comentario])
+        self.assertEqual(recargado.publicaciones[1].comentarios, [])
+
+    def test_actualizar_recarga_json_externo(self):
+        otro_gestor = GestorPublicaciones(self.ruta)
+        otro_gestor.crear_publicacion("ana", "Creada en otra sesión")
+        self.assertEqual(self.gestor.publicaciones, [])
+        self.gestor.recargar()
+        self.assertEqual(self.gestor.publicaciones[0].contenido, "Creada en otra sesión")
+
+    def test_orden_cronologico_en_feed_muro_perfil_y_fechas_invalidas(self):
+        registros = [
+            {"identificador": 1, "nombre_usuario": "ana", "contenido": "Ana anterior",
+             "fecha": "2026-02-01T10:00:00"},
+            {"identificador": 2, "nombre_usuario": "luis", "contenido": "Luis mismo instante",
+             "fecha": "2026-02-03T10:00:00", "comentarios": [{
+                 "nombre_usuario": "ana", "fecha": "2026-02-03T10:01:00", "contenido": "Comentario"}]},
+            {"identificador": 3, "nombre_usuario": "ana", "contenido": "Ana mismo instante",
+             "fecha": "2026-02-03T10:00:00"},
+            {"identificador": 4, "nombre_usuario": "luis", "contenido": "Fecha inválida",
+             "fecha": "no-es-fecha"},
+            {"identificador": 5, "nombre_usuario": "maria", "contenido": "No es del feed",
+             "fecha": "2026-02-04T10:00:00"},
+        ]
+        with open(self.ruta, "w", encoding="utf-8") as archivo:
+            json.dump(registros, archivo, ensure_ascii=False)
+        gestor = GestorPublicaciones(self.ruta)
+        self.amistades.agregar_amistad("ana", "luis")
+        with open(self.ruta, "rb") as archivo:
+            original = archivo.read()
+        self.assertEqual([p.identificador for p in gestor.obtener_publicaciones_inicio("ana", self.amistades)],
+                         [3, 2, 1, 4])
+        self.assertEqual([p.identificador for p in gestor.obtener_publicaciones_usuario("ana")], [3, 1])
+        self.assertEqual([p.identificador for p in gestor.obtener_publicaciones_amigos("ana", self.amistades)],
+                         [2, 4])
+        self.assertEqual(gestor.publicaciones[1].comentarios[0]["contenido"], "Comentario")
+        with open(self.ruta, "rb") as archivo:
+            self.assertEqual(archivo.read(), original)
+        nueva = gestor.crear_publicacion("ana", "Publicación nueva")
+        self.assertEqual(gestor.obtener_publicaciones_inicio("ana", self.amistades)[0], nueva)
+        gestor.recargar()
+        self.assertEqual(gestor.obtener_publicaciones_inicio("ana", self.amistades)[0].identificador,
+                         nueva.identificador)
+
+    def test_publicacion_solo_imagen_y_compatibilidad_json(self):
+        antigua = self.gestor.crear_publicacion("ana", "Publicación antigua")
+        imagen = self.gestor.crear_publicacion("ana", "", "imagenes_publicaciones/foto.gif")
+        con_texto = self.gestor.crear_publicacion("luis", "Comentario de imagen", "imagenes_publicaciones/otra.png")
+        recargado = GestorPublicaciones(self.ruta)
+        self.assertEqual(recargado.publicaciones[0].ruta_imagen, "")
+        self.assertEqual(recargado.publicaciones[1].contenido, "")
+        self.assertEqual(recargado.publicaciones[1].ruta_imagen, imagen.ruta_imagen)
+        self.assertEqual(recargado.publicaciones[2].contenido, con_texto.contenido)
+        self.assertEqual(recargado.publicaciones[2].ruta_imagen, con_texto.ruta_imagen)
+        with self.assertRaises(ValueError):
+            self.gestor.crear_publicacion("ana", "  ")
+        self.assertIsNotNone(antigua)
+
+    def test_reacciones_y_respuestas_con_imagen_persisten(self):
+        publicacion = self.gestor.crear_publicacion("ana", "Publicación")
+        self.gestor.establecer_reaccion(publicacion.identificador, "ana", "Me gusta")
+        self.gestor.establecer_reaccion(publicacion.identificador, "ana", "No me gusta")
+        self.gestor.establecer_reaccion(publicacion.identificador, "luis", "Me divierte")
+        self.assertEqual(publicacion.reacciones, {"ana": "No me gusta", "luis": "Me divierte"})
+        self.assertTrue(self.gestor.quitar_reaccion(publicacion.identificador, "ana"))
+        self.assertEqual(publicacion.reacciones, {"luis": "Me divierte"})
+        self.gestor.establecer_reaccion(publicacion.identificador, "ana", "Me gusta")
+        with self.assertRaises(ValueError):
+            self.gestor.agregar_comentario(publicacion.identificador, "ana", "  ")
+        texto = self.gestor.agregar_comentario(publicacion.identificador, "ana", "Respuesta")
+        imagen = self.gestor.agregar_comentario(
+            publicacion.identificador, "luis", "", "imagenes_respuestas/respuesta.gif")
+        mixta = self.gestor.agregar_comentario(
+            publicacion.identificador, "maria", "Con imagen", "imagenes_respuestas/mixta.png")
+        recargada = GestorPublicaciones(self.ruta).publicaciones[0]
+        self.assertEqual(recargada.reacciones, {"ana": "Me gusta", "luis": "Me divierte"})
+        self.assertEqual(recargada.comentarios, [texto, imagen, mixta])
+        self.assertEqual(imagen["contenido"], "")
+        self.assertEqual(imagen["ruta_imagen"], "imagenes_respuestas/respuesta.gif")
+
+    def test_hilo_anidado_guarda_ids_y_referencias_y_lee_comentarios_viejos(self):
+        publicacion = self.gestor.crear_publicacion("ana", "Tema")
+        primera = self.gestor.agregar_comentario(publicacion.identificador, "luis", "Primera")
+        anidada = self.gestor.agregar_comentario(
+            publicacion.identificador, "ana", "Respuesta a la respuesta", parent_id=primera["id"])
+        self.assertEqual(primera["parent_type"], "publicacion")
+        self.assertEqual(primera["parent_id"], publicacion.identificador)
+        self.assertEqual(anidada["parent_type"], "respuesta")
+        self.assertEqual(anidada["parent_id"], primera["id"])
+        recargada = GestorPublicaciones(self.ruta).publicaciones[0]
+        self.assertEqual(recargada.comentarios, [primera, anidada])
+
+        ruta_vieja = os.path.join(self.carpeta_temporal, "publicaciones_viejas.json")
+        with open(ruta_vieja, "w", encoding="utf-8") as archivo:
+            json.dump([{
+                "identificador": 7, "nombre_usuario": "ana", "contenido": "Antigua",
+                "comentarios": [{"nombre_usuario": "luis", "fecha": "2024-01-01T10:00:00",
+                                 "contenido": "Comentario viejo"}],
+            }], archivo)
+        gestor_viejo = GestorPublicaciones(ruta_vieja)
+        comentario_viejo = gestor_viejo.publicaciones[0].comentarios[0]
+        self.assertEqual(comentario_viejo["id"], 1)
+        self.assertEqual(comentario_viejo["parent_id"], 7)
+        self.assertEqual(comentario_viejo["parent_type"], "publicacion")
+
+    def test_publicacion_antigua_carga_sin_reacciones_ni_respuestas(self):
+        with open(self.ruta, "w", encoding="utf-8") as archivo:
+            archivo.write('[{"identificador":1,"nombre_usuario":"ana","contenido":"Antigua","fecha":"2024-01-01T10:00:00"}]')
+        antigua = GestorPublicaciones(self.ruta).publicaciones[0]
+        self.assertEqual(antigua.reacciones, {})
+        self.assertEqual(antigua.comentarios, [])
+
+    def test_reacciones_anteriores_se_conservan_en_json(self):
+        with open(self.ruta, "w", encoding="utf-8") as archivo:
+            archivo.write('[{"identificador":1,"nombre_usuario":"ana","contenido":"Antigua",'
+                          '"fecha":"2024-01-01T10:00:00","reacciones":{"ana":"Me encanta"}}]')
+        gestor = GestorPublicaciones(self.ruta)
+        publicacion = gestor.publicaciones[0]
+        self.assertEqual(publicacion.reacciones["ana"], "Me encanta")
+        gestor.establecer_reaccion(1, "ana", "No me gusta")
+        self.assertEqual(GestorPublicaciones(self.ruta).publicaciones[0].reacciones["ana"], "No me gusta")
 
     def test_limite_de_caracteres_y_persistencia(self):
         publicacion = self.gestor.crear_publicacion("ana", "á" * 500)
@@ -115,7 +254,7 @@ class PruebasPublicaciones(unittest.TestCase):
                 self.assertEqual(muro.boton_publicar.opciones["state"], estado)
                 self.assertEqual(muro.contador.opciones["text"], "{} / 500 caracteres".format(len(texto)))
             muro._publicar()
-            error.assert_called_once()
+            error.assert_not_called()
             exito.assert_not_called()
             muro.campo_contenido.valor = "Texto\ncon dos líneas"
             with patch.object(self.gestor, "_guardar", side_effect=OSError):
@@ -144,6 +283,18 @@ class PruebasPublicaciones(unittest.TestCase):
             reabierto = VentanaMuro(None, app, self.usuarios.usuarios_por_nombre["ana"])
             self.assertEqual(reabierto.muro_personal.valor, muro.muro_personal.valor)
             self.assertEqual(reabierto.muro_amigos.valor, muro.muro_amigos.valor)
+
+    def test_boton_actualizar_recarga_desde_json(self):
+        app = SimpleNamespace(gestor_usuarios=self.usuarios, gestor_amistades=self.amistades,
+                              gestor_publicaciones=self.gestor)
+        with patch("gui.ventana_muro.tk.Label", WidgetSimulado), \
+             patch("gui.ventana_muro.tk.Button", WidgetSimulado), \
+             patch("gui.ventana_muro.ScrolledText", TextoSimulado):
+            muro = VentanaMuro(None, app, self.usuarios.usuarios_por_nombre["ana"])
+            otra_sesion = GestorPublicaciones(self.ruta)
+            otra_sesion.crear_publicacion("ana", "Recargada desde disco")
+            muro.boton_actualizar.invocar()
+            self.assertIn("Recargada desde disco", muro.muro_personal.valor)
 
 
 if __name__ == "__main__":
