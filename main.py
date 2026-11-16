@@ -12,6 +12,7 @@ from gui.ventana_inicio import VentanaInicio
 from gui.ventana_login import VentanaLogin
 from gui.ventana_registro import VentanaRegistro
 from gui.estilo import aplicar_tema, preparar
+from persistencia.auditoria import Auditoria
 
 
 class CampusConnectApp:
@@ -20,6 +21,10 @@ class CampusConnectApp:
     def __init__(self, raiz, carpeta_datos):
         """Inicializa la persistencia, carga los datos y presenta la pantalla inicial."""
         self.raiz = raiz
+        self.auditoria = Auditoria(carpeta_datos)
+        self.auditoria.registrar("iniciar_aplicacion")
+        self.raiz.protocol("WM_DELETE_WINDOW", self.cerrar)
+        self.raiz.report_callback_exception = self._registrar_error_interfaz
         self.raiz.title("CampusConnect")
         preparar(self.raiz)
         self.gestor_configuracion = GestorConfiguracion(
@@ -44,6 +49,9 @@ class CampusConnectApp:
         self.gestor_publicaciones = GestorPublicaciones(
             os.path.join(carpeta_datos, "publicaciones.json")
         )
+        for gestor in (self.gestor_usuarios, self.gestor_amistades,
+                       self.gestor_publicaciones, self.gestor_configuracion):
+            self.auditoria.conectar(gestor)
         self.contenedor = tk.Frame(raiz, padx=20, pady=0)
         self.contenedor.pack(fill="both", expand=True)
         self._actualizar_boton_tema()
@@ -69,6 +77,8 @@ class CampusConnectApp:
         if clase_vista is None:
             raise ValueError("Vista desconocida: {}".format(nombre_vista))
 
+        if self.usuario_actual is not None and nombre_vista != "panel":
+            self.auditoria.cerrar_sesion("salida_del_panel")
         for widget in self.contenedor.winfo_children():
             widget.destroy()
         self.vista_actual = nombre_vista
@@ -79,6 +89,17 @@ class CampusConnectApp:
             self.vista_instancia = clase_vista(self.contenedor, self)
         aplicar_tema(self.raiz, self.modo_tema)
         self.boton_tema.lift()
+        self.auditoria.registrar("mostrar_vista", vista=nombre_vista)
+
+    def cerrar(self):
+        """Registra la salida normal y finaliza la ventana."""
+        self.auditoria.cerrar_sesion("cierre_aplicacion")
+        self.auditoria.registrar("cerrar_aplicacion")
+        self.raiz.destroy()
+
+    def _registrar_error_interfaz(self, tipo, valor, traza):
+        self.auditoria.registrar("error_interfaz", "error", tipo_error=tipo.__name__)
+        tk.Tk.report_callback_exception(self.raiz, tipo, valor, traza)
 
     def _actualizar_boton_tema(self):
         if hasattr(self, "boton_tema"):

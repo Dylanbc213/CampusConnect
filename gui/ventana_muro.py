@@ -9,7 +9,8 @@ from gui.lista_publicaciones import ListaPublicaciones
 from gui.avatar import dibujar_avatar
 from gui.fechas import fecha_publicacion
 from gui.imagenes import validar_imagen, cargar_vista_previa
-from gui.videos import validar_video, abrir_video, EXTENSIONES_VIDEO
+from gui.videos import validar_video, EXTENSIONES_VIDEO
+from gui.reproductor_video import ReproductorVideo
 
 
 class VentanaMuro:
@@ -60,6 +61,8 @@ class VentanaMuro:
             formulario = contenido
         tk.Label(formulario, text="¿Qué estás pensando?", anchor="w").pack(fill="x", padx=2, pady=(4, 5))
         self.campo_contenido = ScrolledText(formulario, height=3, width=30, wrap="word")
+        self.campo_contenido._campus_rol = "texto_publicacion"
+        self.campo_contenido.vbar.pack_forget()
         self.campo_contenido.pack(fill="x", padx=2, pady=(0, 7))
         self.preview_frame = None
         self.preview_canvas = None
@@ -139,7 +142,7 @@ class VentanaMuro:
                                           activebackground="#D1D5DB", activeforeground="#1F2937")
             self.boton_actualizar.configure(background=self.barra_feed.cget("background"), foreground="#1F2937",
                                             activebackground="#E5E7EB", activeforeground="#1F2937")
-        self.campo_contenido.configure(font=("Segoe UI", 12), background="#F3F4F6", foreground="#1F2937",
+        self.campo_contenido.configure(font=("Segoe UI", 12), background="#F3F4F6", foreground="#000000",
                                       insertbackground="#1F2937", relief="solid", borderwidth=1,
                                       highlightthickness=1, highlightbackground="#9CA3AF",
                                       highlightcolor="#E4002B", padx=16, pady=14)
@@ -303,6 +306,9 @@ class VentanaMuro:
         self._actualizar_formulario()
 
     def _quitar_imagen(self, actualizar=True):
+        if getattr(self, "preview_video", None) is not None:
+            self.preview_video.destroy()
+            self.preview_video = None
         self.imagen_seleccionada = None
         self.estado_imagen.configure(text="")
         if self.preview_frame:
@@ -325,22 +331,23 @@ class VentanaMuro:
             return
         try:
             if os.path.splitext(self.imagen_seleccionada)[1].lower() in EXTENSIONES_VIDEO:
+                if getattr(self, "preview_video", None) is not None:
+                    self.preview_video.destroy()
                 self.preview_canvas.delete("all")
-                alto = min(240, max(150, ancho * 9 // 16))
-                self.preview_canvas.configure(height=alto, scrollregion=(0, 0, ancho, alto))
-                self.preview_canvas.create_rectangle(2, 2, ancho, alto,
-                                                     fill="#111318", outline="#343943")
-                self.preview_canvas.create_text(ancho / 2, alto / 2 - 12, text="▶",
-                                                fill="#FFFFFF", font=("Segoe UI Symbol", 30, "bold"))
-                self.preview_canvas.create_text(ancho / 2, alto / 2 + 30,
-                                                text="Video corto: clic para reproducir",
-                                                fill="#FFFFFF", font=("Segoe UI", 10))
-                self.preview_canvas.bind(
-                    "<Button-1>", lambda evento, ruta=self.imagen_seleccionada: abrir_video(ruta))
+                self.preview_canvas.configure(height=340, scrollregion=(0, 0, ancho, 340))
+                self.preview_video = ReproductorVideo(self.preview_canvas, self.imagen_seleccionada)
+                self.preview_canvas.create_window(0, 0, anchor="nw", window=self.preview_video, width=ancho)
+                self.preview_video.bind("<Configure>", lambda e: self.preview_canvas.configure(
+                    height=min(520, e.height), scrollregion=(0, 0, e.width, e.height)), add="+")
                 self.preview_item = "video"
                 self._ancho_preview = ancho
                 self.error_preview.configure(text="")
                 return
+            if getattr(self, "preview_video", None) is not None:
+                self.preview_video.destroy()
+                self.preview_video = None
+                self.preview_item = None
+                self.preview_canvas.delete("all")
             self.preview_imagen = cargar_vista_previa(self.imagen_seleccionada, ancho)
             ancho_imagen, alto_imagen = self.preview_imagen.width(), self.preview_imagen.height()
             if self.preview_item is None:

@@ -30,6 +30,7 @@ class PanelPrincipal:
         self.gestor_mensajes = GestorMensajes(os.path.join(datos, "privado", "mensajes.json"),
             aplicacion.gestor_usuarios, aplicacion.gestor_amistades,
             lambda: usuario if getattr(aplicacion, "usuario_actual", usuario) is usuario else None)
+        aplicacion.auditoria.conectar(self.gestor_mensajes)
         self.mensajes = Mensajes(self.secciones["Mensajes"], self.gestor_mensajes, datos, self._contar_mensajes)
         self.mensajes.pack(fill="both", expand=True)
         self.mensajes.publicaciones = aplicacion.gestor_publicaciones
@@ -161,6 +162,8 @@ class PanelPrincipal:
                 self.campo_busqueda.focus_set()
         self._resaltar_navegacion()
 
+        self.aplicacion.auditoria.registrar("mostrar_seccion", seccion=nombre)
+
     def _buscar(self):
         consulta = self.campo_busqueda.get()
         self.resultados = self.aplicacion.gestor_usuarios.buscar_usuarios(consulta)
@@ -278,6 +281,7 @@ class PanelPrincipal:
             self.abrir_perfil(usuario)
 
     def abrir_perfil(self, usuario):
+        self.aplicacion.auditoria.registrar("abrir_perfil", perfil=usuario.nombre_usuario)
         self.historial_perfiles.append((
             self.seccion_activa or "Inicio",
             self.perfil.usuario if self.seccion_activa == "Mi perfil" else None,

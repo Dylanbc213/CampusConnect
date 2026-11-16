@@ -295,7 +295,9 @@ def aplicar_tema(widget, modo):
         else:
             frente = base.get("foreground")
 
-        if getattr(actual, "_campus_rol", None) == "reaccion":
+        if getattr(actual, "_campus_rol", None) in ("texto_publicacion", "texto_mensaje"):
+            frente = "#FFFFFF" if modo == "oscuro" else "#000000"
+        elif getattr(actual, "_campus_rol", None) == "reaccion":
             seleccionado = getattr(actual, "_campus_seleccionado", False)
             fondo = parent_bg
             frente = paleta["ACENTO"] if seleccionado else paleta["SECUNDARIO"]
