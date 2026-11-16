@@ -1,0 +1,164 @@
+[
+    {
+        "identificador": 1,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "",
+        "fecha": "2026-11-14T21:48:39",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\c3d837be8f0241978cbd2c2a48bd226a.jpg",
+        "ruta_video": "",
+        "reacciones": {
+            "Dylanbc": "Me gusta"
+        }
+    },
+    {
+        "identificador": 2,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "",
+        "fecha": "2026-11-14T21:51:21",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\1c73c6fca20149f5baac73c528d825db.jpg",
+        "ruta_video": "",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 3,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "https://www.unacomunica.una.ac.cr/",
+        "fecha": "2026-11-14T22:01:58",
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 3,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Cami_cv",
+                "fecha": "2026-11-14T22:21:21",
+                "contenido": "",
+                "ruta_imagen": "imagenes_respuestas/f641af6891b04f8abf539c3af3e65cdd.jpg"
+            }
+        ],
+        "ruta_imagen": "imagenes_publicaciones\\64a1f036f650408784e9229f94754f89.jpg",
+        "ruta_video": "",
+        "reacciones": {
+            "Cami_cv": "Me gusta",
+            "Dylanbc": "Me gusta"
+        }
+    },
+    {
+        "identificador": 5,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "Nole daria un bebe a Camila para que lo cuide jajajaja",
+        "fecha": "2026-11-15T11:22:20",
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 5,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Cami_cv",
+                "fecha": "2026-11-15T11:30:54",
+                "contenido": "Nooo como va a subir eso",
+                "ruta_imagen": ""
+            }
+        ],
+        "ruta_imagen": "",
+        "ruta_video": "videos_publicaciones\\2ed3b2f3ccf24d64a9487730d7e2fac7.mp4",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 6,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "Asi se inicia una protesta en la sede con nuestro orador Ismael Alfaro",
+        "fecha": "2026-11-15T11:25:47",
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 6,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Cami_cv",
+                "fecha": "2026-11-15T11:29:33",
+                "contenido": "JAJAJAJA asi se habla",
+                "ruta_imagen": ""
+            }
+        ],
+        "ruta_imagen": "",
+        "ruta_video": "videos_publicaciones\\a13c68667f9e4986b2dd56b9f96b6597.mp4",
+        "reacciones": {
+            "Cami_cv": "Me gusta",
+            "Dylanbc": "Me gusta"
+        }
+    },
+    {
+        "identificador": 7,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "Ya casi nos vamos para la casa",
+        "fecha": "2026-11-15T11:27:54",
+        "comentarios": [
+            {
+                "id": 1,
+                "parent_id": 7,
+                "parent_type": "publicacion",
+                "nombre_usuario": "Cami_cv",
+                "fecha": "2026-11-15T11:29:54",
+                "contenido": "Ya falta poquito JAJAJA",
+                "ruta_imagen": ""
+            }
+        ],
+        "ruta_imagen": "imagenes_publicaciones\\3788373f8ace4982a88178a640e8ef07.png",
+        "ruta_video": "",
+        "reacciones": {
+            "Cami_cv": "Me gusta"
+        }
+    },
+    {
+        "identificador": 8,
+        "nombre_usuario": "Cami_cv",
+        "contenido": "Ayudaaaa",
+        "fecha": "2026-11-15T11:32:54",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\9f5dc64ef40c4454b963513ce4f8218f.png",
+        "ruta_video": "",
+        "reacciones": {
+            "Dylanbc": "Me gusta"
+        }
+    },
+    {
+        "identificador": 9,
+        "nombre_usuario": "Dylanbc",
+        "contenido": "",
+        "fecha": "2026-11-15T11:43:17",
+        "comentarios": [],
+        "ruta_imagen": "imagenes_publicaciones\\e0c8b8c7b3504c6697ec320037f5ba3d.jpg",
+        "ruta_video": "",
+        "reacciones": {
+            "Dylanbc": "Me gusta"
+        }
+    },
+    {
+        "tipo": "repost",
+        "nombre_usuario": "Dylanbc",
+        "original_id": 1,
+        "fecha": "2026-11-14T21:49:34"
+    },
+    {
+        "tipo": "repost",
+        "nombre_usuario": "Cami_cv",
+        "original_id": 2,
+        "fecha": "2026-11-14T21:53:23"
+    },
+    {
+        "tipo": "repost",
+        "nombre_usuario": "Cami_cv",
+        "original_id": 6,
+        "fecha": "2026-11-15T11:29:34"
+    },
+    {
+        "tipo": "repost",
+        "nombre_usuario": "Dylanbc",
+        "original_id": 8,
+        "fecha": "2026-11-15T11:43:28"
+    }
+]

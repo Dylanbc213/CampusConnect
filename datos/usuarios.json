@@ -1,0 +1,47 @@
+[
+    {
+        "nombre": "Jose David",
+        "nombre_usuario": "Jose1",
+        "contrasena": "jose123",
+        "fecha_registro": "2026-11-08T16:30:07",
+        "nombre_visible": "Jose David",
+        "biografia": "",
+        "foto_perfil": ""
+    },
+    {
+        "nombre": "jodfjsof nfnai",
+        "nombre_usuario": "jose2",
+        "contrasena": "jose2",
+        "fecha_registro": "2026-11-08T16:32:43",
+        "nombre_visible": "jodfjsof nfnai",
+        "biografia": "",
+        "foto_perfil": ""
+    },
+    {
+        "nombre": "Dylan Ballestero",
+        "nombre_usuario": "Dylanbc",
+        "contrasena": "pbkdf2_sha256$600000$b8724df6096b1bac32d17feabbc51578$b52d4d114fe1305664427e799a1d6c89bd9e0835e4ab48324455b6835967faec",
+        "fecha_registro": "2026-11-10T15:52:54",
+        "nombre_visible": "Dylan Ballestero",
+        "biografia": "Ing. Sistemas ",
+        "foto_perfil": "avatares/Dylanbc_99e3b0a4d13b4d6898e14a57c4f8288d.png"
+    },
+    {
+        "nombre": "Gabriel Ballestero",
+        "nombre_usuario": "Gabriel222",
+        "contrasena": "pbkdf2_sha256$600000$5e035324d546f01c81977c64d913fe9d$db3059c15b9d4a34ee5fe8713cc114d000b08a71f505ff016565ffb5e6f2dd29",
+        "fecha_registro": "2026-11-10T16:25:07",
+        "nombre_visible": "Gabriel Ballestero",
+        "biografia": "",
+        "foto_perfil": ""
+    },
+    {
+        "nombre": "Camila Castro",
+        "nombre_usuario": "Cami_cv",
+        "contrasena": "pbkdf2_sha256$600000$fb52f141177f4d379db3c525741ab4b5$06e52a53b89d380df5515455ee1bb87fcb3d38726cc4618da6423f3583dd8760",
+        "fecha_registro": "2026-11-14T15:44:01",
+        "nombre_visible": "Camila Castro",
+        "biografia": "UNA",
+        "foto_perfil": "avatares\\Cami_cv_d652696d8630414187c5d9a2d9560cae.jpg"
+    }
+]
