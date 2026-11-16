@@ -13,6 +13,7 @@ from gestores.gestor_usuarios import GestorUsuarios
 from gestores.gestor_amistades import GestorAmistades
 from gestores.gestor_publicaciones import GestorPublicaciones
 from gui.estilo import preparar
+from gui.lista_publicaciones import ListaPublicaciones
 from gui.panel_principal import PanelPrincipal
 
 
@@ -30,6 +31,32 @@ def crear_png(ruta, ancho, alto):
 
 
 class PruebasNavegacion(unittest.TestCase):
+    def test_lista_publicaciones_permite_desplazamiento(self):
+        raiz = tk.Tk()
+        self.addCleanup(raiz.destroy)
+        raiz.geometry("420x280")
+        lista = ListaPublicaciones(
+            raiz,
+            SimpleNamespace(),
+            SimpleNamespace(nombre_usuario="ana"),
+        )
+        lista.pack(fill="both", expand=True)
+        for numero in range(20):
+            tk.Label(
+                lista.tarjetas,
+                text="Publicación {}".format(numero),
+                height=3,
+            ).pack(fill="x")
+        raiz.update()
+
+        self.assertEqual(lista.scroll.winfo_manager(), "")
+        self.assertLess(float(lista.canvas.yview()[0]), 1.0)
+        inicio = float(lista.canvas.yview()[0])
+        lista._rueda(SimpleNamespace(num=None, delta=-120))
+        raiz.update_idletasks()
+        self.assertGreater(float(lista.canvas.yview()[0]), inicio)
+        self.assertTrue(lista.canvas.bind("<MouseWheel>"))
+
     def test_tarjetas_busqueda_agregar_y_abrir_perfil(self):
         raiz = tk.Tk()
         self.addCleanup(raiz.destroy)
@@ -349,7 +376,7 @@ class PruebasNavegacion(unittest.TestCase):
             self.assertTrue(os.path.exists(ruta_guardada))
             tarjeta = panel.muro.lista_inicio.tarjetas.winfo_children()[0]
             self.assertIsNotNone(tarjeta.imagen)
-            self.assertEqual(panel.muro.lista_inicio.scroll.winfo_manager(), "")
+            self.assertEqual(panel.muro.lista_inicio.scroll.winfo_manager(), "pack")
             self.assertEqual(panel.muro.boton_actualizar.cget("text"), "⟳")
             self.assertEqual(tarjeta.boton_comentarios.winfo_manager(), "")
             tarjeta.boton_responder.invoke()

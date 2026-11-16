@@ -183,6 +183,8 @@ def _dibujar_boton_redondeado(widget, color, fondo_padre):
         import tkinter.font as tkfont
         fuente = tkfont.Font(widget, font=widget.cget("font")) if texto else None
         icono_pil = ImageTk.getimage(icono).convert("RGBA") if icono is not None else None
+        if getattr(widget, "_campus_rol", None) == "publicar":
+            widget._campus_tamano_boton = (min(max(94, widget.winfo_reqwidth()), 128), 34)
         if not hasattr(widget, "_campus_tamano_boton"):
             widget.update_idletasks()
             ancho_texto = fuente.measure(texto) + 30 if texto else 0
@@ -215,10 +217,16 @@ def _dibujar_boton_redondeado(widget, color, fondo_padre):
         imagen = imagen.resize((ancho, alto), Image.Resampling.LANCZOS)
         widget._campus_fondo_redondeado = ImageTk.PhotoImage(imagen)
         widget._campus_color_fondo = color
+        es_publicar = getattr(widget, "_campus_rol", None) == "publicar"
         opciones = {"image": widget._campus_fondo_redondeado, "compound": "center",
-                    "background": fondo_padre, "activebackground": fondo_padre,
+                    "background": color if es_publicar else fondo_padre,
+                    "activebackground": color if es_publicar else fondo_padre,
                     "borderwidth": 0, "highlightthickness": 0,
+                    "highlightbackground": color if es_publicar else fondo_padre,
+                    "highlightcolor": color if es_publicar else fondo_padre,
                     "width": ancho, "height": alto}
+        if es_publicar:
+            opciones.update({"padx": 12, "pady": 0, "justify": "center"})
         if icono is not None:
             opciones["text"] = ""
         widget.configure(**opciones)
@@ -295,7 +303,10 @@ def aplicar_tema(widget, modo):
         else:
             frente = base.get("foreground")
 
-        if getattr(actual, "_campus_rol", None) in ("texto_publicacion", "texto_mensaje"):
+        if getattr(actual, "_campus_rol", None) == "publicar":
+            fondo = "#E4002B"
+            frente = "#FFFFFF"
+        elif getattr(actual, "_campus_rol", None) in ("texto_publicacion", "texto_mensaje"):
             frente = "#FFFFFF" if modo == "oscuro" else "#000000"
         elif getattr(actual, "_campus_rol", None) == "reaccion":
             seleccionado = getattr(actual, "_campus_seleccionado", False)
@@ -411,6 +422,13 @@ def _hover(widget):
         widget.configure(foreground=frente)
         _dibujar_boton_redondeado(widget, paleta["SUPERFICIE"], fondo_padre)
         return
+    if getattr(widget, "_campus_rol", None) == "publicar":
+        widget.configure(background="#E4002B", activebackground="#B80023", foreground="#FFFFFF",
+                        activeforeground="#FFFFFF", highlightthickness=0,
+                        highlightbackground="#E4002B", highlightcolor="#E4002B", borderwidth=0,
+                        padx=12, pady=0)
+        _dibujar_boton_redondeado(widget, "#E4002B", widget.master.cget("background"))
+        return
     if getattr(widget, "_campus_rol", None) in ("actualizar", "icono"):
         widget.configure(foreground=paleta["TEXTO"])
         if getattr(widget, "_campus_icono", None):
@@ -436,6 +454,13 @@ def _hover(widget):
 
 def _salir_hover(widget):
     reposo = getattr(widget, '_campus_reposo', None)
+    if getattr(widget, "_campus_rol", None) == "publicar":
+        widget.configure(background="#E4002B", activebackground="#B80023", foreground="#FFFFFF",
+                        activeforeground="#FFFFFF", highlightthickness=0,
+                        highlightbackground="#E4002B", highlightcolor="#E4002B", borderwidth=0,
+                        padx=12, pady=0)
+        _dibujar_boton_redondeado(widget, "#E4002B", widget.master.cget("background"))
+        return
     if reposo:
         try:
             fondo_padre = widget.master.cget("background")

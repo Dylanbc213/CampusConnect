@@ -15,6 +15,21 @@ from main import CampusConnectApp
 
 
 class PruebasTema(unittest.TestCase):
+    def test_boton_publicar_tiene_estilo_compacto_y_sin_cuadro_blanco(self):
+        raiz = tk.Tk()
+        self.addCleanup(raiz.destroy)
+        raiz.withdraw()
+        preparar(raiz)
+        boton = tk.Button(raiz, text="Publicar")
+        boton._campus_rol = "publicar"
+        aplicar_tema(raiz, "claro")
+        boton.update_idletasks()
+        self.assertTrue(hasattr(boton, "_campus_tamano_boton"))
+        self.assertEqual(boton.cget("background"), "#E4002B")
+        self.assertEqual(boton.cget("highlightbackground"), "#E4002B")
+        self.assertLessEqual(boton._campus_tamano_boton[0], 128)
+        self.assertEqual(boton._campus_tamano_boton[1], 34)
+
     def test_avatares_transparentes_y_controles_en_ambos_temas(self):
         raiz = tk.Tk()
         self.addCleanup(raiz.destroy)

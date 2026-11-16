@@ -106,7 +106,13 @@ class VentanaMuro:
         self.boton_imagen.pack(side="left", padx=(0, 6))
         self.estado_imagen = tk.Label(padre_acciones, text="", anchor="w", foreground="#6B7280")
         self.estado_imagen.pack(side="left", fill="x", expand=True)
-        self.boton_publicar = tk.Button(padre_acciones, text="Publicar", command=self._publicar, state="disabled")
+        self.boton_publicar = tk.Button(
+            padre_acciones, text="Publicar", command=self._publicar, state="disabled",
+            background="#E4002B", foreground="#FFFFFF", activebackground="#B80023",
+            activeforeground="#FFFFFF", relief="flat", borderwidth=0, highlightthickness=0,
+            padx=12, pady=6, cursor="hand2", font=("Segoe UI", 10, "bold"),
+        )
+        self.boton_publicar._campus_rol = "publicar"
         self.boton_publicar.pack(side="right")
         self.boton_cancelar = tk.Button(
             padre_acciones, text="Cancelar", command=self._cancelar_compositor,

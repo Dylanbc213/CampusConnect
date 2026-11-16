@@ -1,5 +1,6 @@
 """Reproducción con sonido sobre una superficie Tk, sin abrir VLC externamente."""
 import os
+import sys
 import tempfile
 import weakref
 import tkinter as tk
@@ -103,7 +104,10 @@ class ReproductorVideo(tk.Frame):
                 if self._tarea is None:
                     self._tarea = self.after(300, self._comprobar)
         except (ImportError, OSError, NameError, AttributeError) as error:
-            self.estado.configure(text="No se pudo iniciar el video. Comprueba VLC y python-vlc. " + str(error))
+            mensaje = "No se pudo iniciar el video. Comprueba VLC y python-vlc. " + str(error)
+            if isinstance(error, ImportError):
+                mensaje += "\nPython: " + sys.executable
+            self.estado.configure(text=mensaje, wraplength=700)
             self.estado.pack(anchor="w")
 
     def _comprobar(self):

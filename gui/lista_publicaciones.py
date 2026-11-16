@@ -27,7 +27,7 @@ class ListaPublicaciones(tk.Frame):
         self.scroll = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.pack(side="left", fill="both", expand=True)
-        # La lista mantiene su scrollbar funcional para yview, pero no lo muestra.
+        self.scroll.pack_forget()
         self.tarjetas = tk.Frame(self.canvas, background=GRIS, padx=5, pady=5)
         self.ventana = self.canvas.create_window((0, 0), window=self.tarjetas, anchor="nw")
         self.tarjetas.bind("<Configure>", lambda evento: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
